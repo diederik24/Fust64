@@ -34,10 +34,22 @@ export default function MutatiePage() {
   async function loadRecenteMutaties() {
     try {
       const response = await fetch('/api/mutaties');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Fout bij laden mutaties:', errorData);
+        setRecenteMutaties([]);
+        return;
+      }
       const data = await response.json();
-      setRecenteMutaties(data.slice(0, 10)); // Laatste 10 mutaties
+      if (data.error) {
+        console.error('API error:', data.error);
+        setRecenteMutaties([]);
+        return;
+      }
+      setRecenteMutaties(Array.isArray(data) ? data.slice(0, 10) : []); // Laatste 10 mutaties
     } catch (error) {
       console.error('Fout bij laden mutaties:', error);
+      setRecenteMutaties([]);
     }
   }
 
@@ -382,7 +394,7 @@ export default function MutatiePage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[100px]">Datum</TableHead>
-                        <TableHead>Partij</TableHead>
+                        <TableHead>Klant/Kweker Nummer</TableHead>
                         <TableHead className="text-right">Gelost</TableHead>
                         <TableHead className="text-right">Geladen</TableHead>
                       </TableRow>
@@ -406,23 +418,23 @@ export default function MutatiePage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="text-sm">
-                              <div className="text-green-600 font-semibold">{mutatie.gelost || 0}</div>
-                              {(mutatie.gelost_cactag6 || mutatie.gelost_bleche) && (
-                                <div className="text-xs text-muted-foreground">
-                                  CC: {mutatie.gelost_cactag6 || 0} | BL: {mutatie.gelost_bleche || 0}
-                                </div>
-                              )}
+                            <div className="text-sm space-y-1">
+                              <div className="text-green-600 font-semibold">
+                                CC-TAG6: {mutatie.gelost_cactag6 || 0}
+                              </div>
+                              <div className="text-green-600 font-semibold">
+                                Bleche: {mutatie.gelost_bleche || 0}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="text-sm">
-                              <div className="text-blue-600 font-semibold">{mutatie.geladen || 0}</div>
-                              {(mutatie.geladen_cactag6 || mutatie.geladen_bleche) && (
-                                <div className="text-xs text-muted-foreground">
-                                  CC: {mutatie.geladen_cactag6 || 0} | BL: {mutatie.geladen_bleche || 0}
-                                </div>
-                              )}
+                            <div className="text-sm space-y-1">
+                              <div className="text-blue-600 font-semibold">
+                                CC-TAG6: {mutatie.geladen_cactag6 || 0}
+                              </div>
+                              <div className="text-blue-600 font-semibold">
+                                Bleche: {mutatie.geladen_bleche || 0}
+                              </div>
                             </div>
                           </TableCell>
                         </TableRow>

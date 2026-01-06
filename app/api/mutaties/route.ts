@@ -6,7 +6,11 @@ export async function GET() {
     const mutaties = await getMutaties();
     return NextResponse.json(mutaties);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Fout bij ophalen mutaties' }, { status: 500 });
+    console.error('Error in GET /api/mutaties:', error);
+    return NextResponse.json({ 
+      error: error.message || 'Fout bij ophalen mutaties',
+      details: error.details || error.hint || error.code
+    }, { status: 500 });
   }
 }
 

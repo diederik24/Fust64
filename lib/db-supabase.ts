@@ -111,12 +111,27 @@ export async function getMutaties(): Promise<Mutatie[]> {
     .order('datum', { ascending: false })
     .order('created_at', { ascending: false });
 
-  if (mutatiesError) throw mutatiesError;
+  if (mutatiesError) {
+    console.error('Error fetching mutaties:', mutatiesError);
+    throw mutatiesError;
+  }
 
-  if (!mutaties || mutaties.length === 0) return [];
+  if (!mutaties || mutaties.length === 0) {
+    console.log('No mutaties found');
+    return [];
+  }
 
   // Haal alle unieke partij IDs op
   const partijIds = [...new Set(mutaties.map((m: any) => m.partij_id))];
+  
+  if (partijIds.length === 0) {
+    return mutaties.map((mutatie: any) => ({
+      ...mutatie,
+      partij_nummer: undefined,
+      partij_naam: undefined,
+      partij_type: undefined,
+    }));
+  }
   
   // Haal alle partijen op
   const { data: partijen, error: partijenError } = await supabase
@@ -124,7 +139,10 @@ export async function getMutaties(): Promise<Mutatie[]> {
     .select('id, nummer, naam, type')
     .in('id', partijIds);
 
-  if (partijenError) throw partijenError;
+  if (partijenError) {
+    console.error('Error fetching partijen:', partijenError);
+    throw partijenError;
+  }
 
   // Maak een map voor snelle lookup
   const partijenMap = new Map(partijen?.map((p: any) => [p.id, p]) || []);
