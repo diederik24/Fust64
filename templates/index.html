@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fust Beheer Systeem</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="logo"><i class="fas fa-box"></i> Fust Beheer</h1>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="mutatie">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Mutatie Invoeren</span>
+                </a>
+                <a href="#" class="nav-item" data-page="overzicht">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Fust Overzicht</span>
+                </a>
+                <a href="#" class="nav-item" data-page="partijen">
+                    <i class="fas fa-users"></i>
+                    <span>Partijen Beheer</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page active">
+                <div class="page-header">
+                    <h2>Dashboard</h2>
+                    <p class="subtitle">Overzicht van fust beheer</p>
+                </div>
+                <div class="stats-grid" id="dashboard-stats"></div>
+                <div class="dashboard-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Recente Mutaties</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="recente-mutaties"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mutatie Invoeren Page -->
+            <div id="mutatie-page" class="page">
+                <div class="page-header">
+                    <h2>Fust Mutatie Invoeren</h2>
+                    <p class="subtitle">Voeg een nieuwe fust mutatie toe</p>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <form id="mutatie-form" class="modern-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="partij-select">
+                                        <i class="fas fa-user"></i> Partij (Klant/Leverancier)
+                                    </label>
+                                    <select id="partij-select" required>
+                                        <option value="">Selecteer partij...</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="datum">
+                                        <i class="fas fa-calendar"></i> Datum
+                                    </label>
+                                    <input type="date" id="datum" required value="">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="geladen">
+                                        <i class="fas fa-arrow-up"></i> Aantal Geladen (uitgeleend)
+                                    </label>
+                                    <input type="number" id="geladen" min="0" value="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="gelost">
+                                        <i class="fas fa-arrow-down"></i> Aantal Gelost (teruggekregen)
+                                    </label>
+                                    <input type="number" id="gelost" min="0" value="0" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-save"></i> Mutatie Invoeren
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fust Overzicht Page -->
+            <div id="overzicht-page" class="page">
+                <div class="page-header">
+                    <h2>Fust Overzicht</h2>
+                    <p class="subtitle">Balans per klant en leverancier</p>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active" data-filter="all">
+                        <i class="fas fa-list"></i> Alles
+                    </button>
+                    <button class="filter-btn" data-filter="klant">
+                        <i class="fas fa-user-check"></i> Klanten
+                    </button>
+                    <button class="filter-btn" data-filter="leverancier">
+                        <i class="fas fa-truck"></i> Leveranciers
+                    </button>
+                </div>
+                <div id="overzicht-content"></div>
+            </div>
+
+            <!-- Partijen Beheer Page -->
+            <div id="partijen-page" class="page">
+                <div class="page-header">
+                    <h2>Partijen Beheer</h2>
+                    <p class="subtitle">Beheer klanten en leveranciers</p>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Nieuwe Partij Toevoegen</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="partij-form" class="modern-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="partij-nummer">
+                                        <i class="fas fa-hashtag"></i> Partij Nummer
+                                    </label>
+                                    <input type="text" id="partij-nummer" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="partij-naam">
+                                        <i class="fas fa-building"></i> Naam
+                                    </label>
+                                    <input type="text" id="partij-naam">
+                                </div>
+                                <div class="form-group">
+                                    <label for="partij-type">
+                                        <i class="fas fa-tag"></i> Type
+                                    </label>
+                                    <select id="partij-type" required>
+                                        <option value="klant">Klant</option>
+                                        <option value="leverancier">Leverancier</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-plus"></i> Partij Toevoegen
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 30px;">
+                    <div class="card-header">
+                        <h3>Bestaande Partijen</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="partijen-lijst"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="message" class="message"></div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

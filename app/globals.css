@@ -1,0 +1,370 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* React Day Picker styling */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-background-color: hsl(var(--accent));
+  --rdp-accent-color-dark: hsl(var(--primary));
+  --rdp-background-color-dark: hsl(var(--accent));
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 3px solid var(--rdp-accent-color);
+  margin: 0;
+}
+
+.rdp-button_reset {
+  appearance: none;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  cursor: default;
+  color: inherit;
+  border: none;
+  background-color: transparent;
+  font-size: inherit;
+  font-family: inherit;
+  line-height: normal;
+  -webkit-font-smoothing: inherit;
+  -moz-osx-font-smoothing: inherit;
+  -webkit-appearance: none;
+}
+
+.rdp-button {
+  border: 2px solid transparent;
+}
+
+.rdp-button[disabled] {
+  opacity: 0.25;
+}
+
+.rdp-button:not([disabled]) {
+  cursor: pointer;
+}
+
+.rdp-button:focus:not([disabled]),
+.rdp-button:active:not([disabled]) {
+  color: inherit;
+  border: var(--rdp-outline);
+  background-color: var(--rdp-background-color);
+  font-weight: 500;
+  outline: none;
+}
+
+.rdp-months {
+  display: flex;
+}
+
+.rdp-month {
+  margin: 0 1em;
+}
+
+.rdp-month:first-child {
+  margin-left: 0;
+}
+
+.rdp-month:last-child {
+  margin-right: 0;
+}
+
+.rdp-table {
+  width: 100%;
+  max-width: calc(var(--rdp-cell-size) * 7);
+  border-collapse: collapse;
+}
+
+.rdp-with_weeknumber .rdp-table {
+  max-width: calc(var(--rdp-cell-size) * 8);
+  border-collapse: collapse;
+}
+
+.rdp-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  text-align: left;
+}
+
+.rdp-multiple_months .rdp-caption {
+  position: relative;
+  display: block;
+  text-align: center;
+}
+
+.rdp-caption_label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 0.25rem;
+  white-space: nowrap;
+  color: currentColor;
+  border: 0;
+  border: 2px solid transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.rdp-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.rdp-multiple_months .rdp-caption_start .rdp-nav,
+.rdp-multiple_months .rdp-caption_end .rdp-nav {
+  position: relative;
+}
+
+.rdp-nav_button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+  padding: 0.25rem;
+  border-radius: 100%;
+}
+
+.rdp-nav_button:hover {
+  background-color: var(--rdp-background-color);
+}
+
+.rdp-nav_button:focus:not([disabled]) {
+  color: inherit;
+  border: var(--rdp-outline);
+  background-color: var(--rdp-background-color);
+  font-weight: 500;
+  outline: none;
+}
+
+.rdp-nav_icon {
+  width: 16px;
+  height: 16px;
+}
+
+.rdp-nav_button_next {
+  margin-left: calc(var(--rdp-cell-size) / 2);
+}
+
+.rdp-multiple_months .rdp-caption_start .rdp-nav_button_next,
+.rdp-multiple_months .rdp-caption_end .rdp-nav_button_previous {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.rdp-multiple_months .rdp-caption_start .rdp-nav_button_next {
+  right: 0;
+}
+
+.rdp-multiple_months .rdp-caption_end .rdp-nav_button_previous {
+  left: 0;
+}
+
+.rdp-multiple_months .rdp-caption_between .rdp-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  transform: translateY(-50%);
+}
+
+.rdp-multiple_months .rdp-caption_between .rdp-nav_button_previous {
+  float: left;
+}
+
+.rdp-multiple_months .rdp-caption_between .rdp-nav_button_next {
+  float: right;
+}
+
+.rdp-head_cell {
+  vertical-align: middle;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  height: 100%;
+  height: var(--rdp-cell-size);
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.rdp-tbody {
+  border: 0;
+}
+
+.rdp-tfoot {
+  margin: 0.5em;
+}
+
+.rdp-cell {
+  width: 100%;
+  text-align: center;
+  font-size: 0.875rem;
+  position: relative;
+  padding: 0;
+}
+
+.rdp-button[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.rdp-day {
+  width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+  text-align: center;
+}
+
+.rdp-day_today:not(.rdp-day_outside) {
+  font-weight: 500;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  color: hsl(var(--primary-foreground));
+  opacity: 1;
+  background-color: var(--rdp-accent-color);
+  font-weight: 500;
+}
+
+.rdp-day_selected:focus-visible {
+  outline: var(--rdp-outline-selected);
+  z-index: 2;
+}
+
+.rdp-day_outside {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.5;
+}
+
+.rdp-day_disabled {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.25;
+}
+
+.rdp-day_hidden {
+  visibility: hidden;
+}
+
+.rdp-day_range_start:not(.rdp-day_range_end) .rdp-day,
+.rdp-day_range_end:not(.rdp-day_range_start) .rdp-day {
+  border-radius: 0;
+}
+
+.rdp-day_range_start.rdp-day_range_end .rdp-day {
+  border-radius: 100%;
+}
+
+.rdp-day_range_middle {
+  border-radius: 0;
+}
+
+.rdp-weeknumber {
+  font-size: 0.75rem;
+}
+
+.rdp-weeknumber,
+.rdp-day.rdp-day_weeknumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: var(--rdp-cell-size);
+  max-width: var(--rdp-cell-size);
+  height: var(--rdp-cell-size);
+  max-height: var(--rdp-cell-size);
+  margin: 0;
+  border: 0;
+  font-size: inherit;
+}
+
+.rdp-day.rdp-day_weeknumber {
+  cursor: default;
+}
+
+.rdp-day.rdp-day_weeknumber:not(.rdp-day_today) {
+  font-weight: 300;
+}
+
+.rdp-day:focus-visible {
+  position: relative;
+  z-index: 2;
+  border: var(--rdp-outline);
+  border-radius: 100%;
+  color: inherit;
+  background-color: var(--rdp-background-color);
+  font-weight: 500;
+  outline: none;
+}
+
