@@ -1,5 +1,8 @@
 import { supabase } from './supabase';
 
+// Test connection on import
+console.log('db-supabase: Supabase client imported');
+
 export interface Partij {
   id: number;
   nummer: string;
@@ -160,6 +163,8 @@ export async function getMutaties(): Promise<Mutatie[]> {
 }
 
 export async function getOverzicht(): Promise<Overzicht[]> {
+  console.log('getOverzicht: Starting...');
+  
   // Haal alle partijen op
   const { data: partijen, error: partijenError } = await supabase
     .from('partijen')
@@ -167,14 +172,36 @@ export async function getOverzicht(): Promise<Overzicht[]> {
     .order('type', { ascending: true })
     .order('naam', { ascending: true });
 
-  if (partijenError) throw partijenError;
+  console.log('getOverzicht: Partijen query result:', {
+    hasData: !!partijen,
+    count: partijen?.length || 0,
+    partijen: partijen,
+    hasError: !!partijenError,
+    error: partijenError
+  });
+
+  if (partijenError) {
+    console.error('getOverzicht: Error fetching partijen:', partijenError);
+    throw partijenError;
+  }
 
   // Haal alle mutaties op
   const { data: mutaties, error: mutatiesError } = await supabase
     .from('fust_mutaties')
     .select('partij_id, geladen, gelost');
 
-  if (mutatiesError) throw mutatiesError;
+  console.log('getOverzicht: Mutaties query result:', {
+    hasData: !!mutaties,
+    count: mutaties?.length || 0,
+    mutaties: mutaties,
+    hasError: !!mutatiesError,
+    error: mutatiesError
+  });
+
+  if (mutatiesError) {
+    console.error('getOverzicht: Error fetching mutaties:', mutatiesError);
+    throw mutatiesError;
+  }
 
   // Groepeer mutaties per partij
   const mutatiesPerPartij = new Map<number, { geladen: number; gelost: number }>();
@@ -188,8 +215,10 @@ export async function getOverzicht(): Promise<Overzicht[]> {
     });
   });
 
+  console.log('getOverzicht: Mutaties per partij:', Array.from(mutatiesPerPartij.entries()));
+
   // Combineer partijen met mutaties
-  return (partijen || []).map((partij: any) => {
+  const result = (partijen || []).map((partij: any) => {
     const totals = mutatiesPerPartij.get(partij.id) || { geladen: 0, gelost: 0 };
     const balans = totals.geladen - totals.gelost;
 
@@ -203,5 +232,12 @@ export async function getOverzicht(): Promise<Overzicht[]> {
       balans,
     };
   });
+
+  console.log('getOverzicht: Final result:', {
+    count: result.length,
+    result: result
+  });
+
+  return result;
 }
 

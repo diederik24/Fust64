@@ -26,12 +26,33 @@ export default function OverzichtPage() {
   }, []);
 
   async function loadOverzicht() {
+    console.log('OverzichtPage: Loading overzicht...');
     try {
       const response = await fetch('/api/overzicht');
+      console.log('OverzichtPage: Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('OverzichtPage: Response not OK:', errorData);
+        return;
+      }
+      
       const data = await response.json();
-      setOverzicht(data);
+      console.log('OverzichtPage: Data received:', {
+        isArray: Array.isArray(data),
+        count: Array.isArray(data) ? data.length : 'N/A',
+        hasError: !!data.error,
+        data: data
+      });
+      
+      if (data.error) {
+        console.error('OverzichtPage: API error:', data.error);
+        return;
+      }
+      
+      setOverzicht(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Fout bij laden overzicht:', error);
+      console.error('OverzichtPage: Exception:', error);
     }
   }
 

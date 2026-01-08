@@ -22,10 +22,17 @@ export default function Dashboard() {
   }, []);
 
   async function loadData() {
+    console.log('Dashboard: Loading data...');
     const [overzicht, mutaties] = await Promise.all([
       getOverzicht(),
       getMutaties(),
     ]);
+
+    console.log('Dashboard: Data loaded:', {
+      overzichtCount: overzicht.length,
+      mutatiesCount: mutaties.length,
+      mutaties: mutaties
+    });
 
     const totaalPartijen = overzicht.length;
     const totaalKlanten = overzicht.filter(p => p.type === 'klant').length;
@@ -41,7 +48,9 @@ export default function Dashboard() {
       totaalGelost,
     });
 
-    setRecenteMutaties(mutaties.slice(0, 5));
+    const recente = mutaties.slice(0, 5);
+    console.log('Dashboard: Setting recente mutaties:', recente.length, recente);
+    setRecenteMutaties(recente);
   }
 
   return (
@@ -168,21 +177,17 @@ export default function Dashboard() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.6 + index * 0.1 }}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      className="p-4 border rounded-lg hover:shadow-md transition-shadow"
                     >
-                      <div>
+                      <div className="mb-3">
                         <p className="font-semibold">{mutatie.partij_nummer} - {mutatie.partij_naam || 'Geen naam'}</p>
                         <p className="text-sm text-gray-500">{new Date(mutatie.datum).toLocaleDateString('nl-NL')}</p>
                       </div>
-                      <div className="flex gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Geladen</p>
-                          <p className="font-semibold text-green-600">{mutatie.geladen}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">Gelost</p>
-                          <p className="font-semibold text-blue-600">{mutatie.gelost}</p>
-                        </div>
+                      <div className="text-sm space-y-1">
+                        <p className="text-gray-700">CC-TAG6: <span className="font-semibold">{mutatie.gelost_cactag6 || 0}</span></p>
+                        <p className="text-gray-700">Bleche: <span className="font-semibold">{mutatie.gelost_bleche || 0}</span></p>
+                        <p className="text-gray-700">CC-TAG6: <span className="font-semibold">{mutatie.geladen_cactag6 || 0}</span></p>
+                        <p className="text-gray-700">Bleche: <span className="font-semibold">{mutatie.geladen_bleche || 0}</span></p>
                       </div>
                     </motion.div>
                   ))}
