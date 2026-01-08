@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, PlusCircle, List, Package, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Package, Settings, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -10,7 +10,6 @@ import { useState } from 'react';
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/mutatie', label: 'Mutatie Invoeren', icon: PlusCircle },
-  { href: '/overzicht', label: 'Fust Overzicht', icon: List },
   { href: '/mutatie-beheer', label: 'Mutatie Beheer', icon: Settings },
 ];
 
