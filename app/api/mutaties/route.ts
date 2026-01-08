@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMutatie, getMutaties, getPartijByNummer, createPartij } from '@/lib/db-supabase';
+import { createMutatie, getMutaties, getPartijByNummer, createPartij, deleteAllMutaties } from '@/lib/db-supabase';
 
 export async function GET() {
   try {
@@ -51,6 +51,23 @@ export async function POST(request: NextRequest) {
       success: false, 
       error: error.message || 'Fout bij aanmaken mutatie' 
     }, { status: 400 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    const deletedCount = await deleteAllMutaties();
+    return NextResponse.json({ 
+      success: true, 
+      message: `Alle mutaties zijn verwijderd`,
+      deletedCount 
+    });
+  } catch (error: any) {
+    console.error('Error in DELETE /api/mutaties:', error);
+    return NextResponse.json({ 
+      success: false,
+      error: error.message || 'Fout bij verwijderen mutaties' 
+    }, { status: 500 });
   }
 }
 

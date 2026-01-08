@@ -241,3 +241,48 @@ export async function getOverzicht(): Promise<Overzicht[]> {
   return result;
 }
 
+export async function deleteAllMutaties(): Promise<number> {
+  // Eerst het aantal mutaties ophalen
+  const { data: mutaties, error: fetchError } = await supabase
+    .from('fust_mutaties')
+    .select('id');
+
+  if (fetchError) {
+    console.error('Error fetching mutaties for deletion:', fetchError);
+    throw fetchError;
+  }
+
+  const count = mutaties?.length || 0;
+
+  if (count === 0) {
+    return 0;
+  }
+
+  // Verwijder alle mutaties
+  const { error: deleteError } = await supabase
+    .from('fust_mutaties')
+    .delete()
+    .neq('id', 0); // Delete all (using a condition that's always true)
+
+  if (deleteError) {
+    console.error('Error deleting mutaties:', deleteError);
+    throw deleteError;
+  }
+
+  return count;
+}
+
+export async function deleteMutatie(id: number): Promise<boolean> {
+  const { error } = await supabase
+    .from('fust_mutaties')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting mutatie:', error);
+    throw error;
+  }
+
+  return true;
+}
+
