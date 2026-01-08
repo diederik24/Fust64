@@ -19,10 +19,10 @@ export default function MutatiePage() {
   const [dag, setDag] = useState(today.getDate().toString());
   const [maand, setMaand] = useState((today.getMonth() + 1).toString());
   const [jaar, setJaar] = useState(today.getFullYear().toString());
-  const [gelostCactag6, setGelostCactag6] = useState(0);
-  const [gelostBleche, setGelostBleche] = useState(0);
-  const [geladenCactag6, setGeladenCactag6] = useState(0);
-  const [geladenBleche, setGeladenBleche] = useState(0);
+  const [gelostCactag6, setGelostCactag6] = useState<string>('0');
+  const [gelostBleche, setGelostBleche] = useState<string>('0');
+  const [geladenCactag6, setGeladenCactag6] = useState<string>('0');
+  const [geladenBleche, setGeladenBleche] = useState<string>('0');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recenteMutaties, setRecenteMutaties] = useState<any[]>([]);
@@ -75,12 +75,12 @@ export default function MutatiePage() {
           partij_nummer: partijNummer.trim(),
           partij_type: partijType,
           datum: datumString,
-          geladen: geladenCactag6 + geladenBleche,
-          gelost: gelostCactag6 + gelostBleche,
-          geladen_cactag6: geladenCactag6,
-          geladen_bleche: geladenBleche,
-          gelost_cactag6: gelostCactag6,
-          gelost_bleche: gelostBleche,
+          geladen: (parseInt(geladenCactag6) || 0) + (parseInt(geladenBleche) || 0),
+          gelost: (parseInt(gelostCactag6) || 0) + (parseInt(gelostBleche) || 0),
+          geladen_cactag6: parseInt(geladenCactag6) || 0,
+          geladen_bleche: parseInt(geladenBleche) || 0,
+          gelost_cactag6: parseInt(gelostCactag6) || 0,
+          gelost_bleche: parseInt(gelostBleche) || 0,
         }),
       });
 
@@ -89,10 +89,10 @@ export default function MutatiePage() {
       if (data.success) {
         setMessage({ type: 'success', text: 'Mutatie succesvol ingevoerd!' });
         setPartijNummer('');
-        setGelostCactag6(0);
-        setGelostBleche(0);
-        setGeladenCactag6(0);
-        setGeladenBleche(0);
+        setGelostCactag6('0');
+        setGelostBleche('0');
+        setGeladenCactag6('0');
+        setGeladenBleche('0');
         const today = new Date();
         setDag(today.getDate().toString());
         setMaand((today.getMonth() + 1).toString());
@@ -262,8 +262,31 @@ export default function MutatiePage() {
                         type="number"
                         min="0"
                         value={gelostCactag6}
-                        onChange={(e) => setGelostCactag6(parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Als het veld leeg is, zet het op 0
+                          if (value === '') {
+                            setGelostCactag6('0');
+                          } else {
+                            // Verwijder leading zeros behalve als het alleen 0 is
+                            const numValue = value.replace(/^0+/, '') || '0';
+                            setGelostCactag6(numValue);
+                          }
+                        }}
+                        onFocus={(e) => {
+                          // Selecteer de 0 zodat het direct wordt vervangen bij typen
+                          if (e.target.value === '0') {
+                            e.target.select();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Zet op 0 als het veld leeg is wanneer je het veld verlaat
+                          if (e.target.value === '') {
+                            setGelostCactag6('0');
+                          }
+                        }}
                         required
+                        disabled={loading}
                       />
                     </div>
                     <div className="space-y-2">
@@ -286,8 +309,22 @@ export default function MutatiePage() {
                         type="number"
                         min="0"
                         value={gelostBleche}
-                        onChange={(e) => setGelostBleche(parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            setGelostBleche('0');
+                          } else {
+                            const numValue = value.replace(/^0+/, '') || '0';
+                            setGelostBleche(numValue);
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') {
+                            e.target.select();
+                          }
+                        }}
                         required
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -319,8 +356,27 @@ export default function MutatiePage() {
                         type="number"
                         min="0"
                         value={geladenCactag6}
-                        onChange={(e) => setGeladenCactag6(parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            setGeladenCactag6('0');
+                          } else {
+                            const numValue = value.replace(/^0+/, '') || '0';
+                            setGeladenCactag6(numValue);
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') {
+                            e.target.select();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            setGeladenCactag6('0');
+                          }
+                        }}
                         required
+                        disabled={loading}
                       />
                     </div>
                     <div className="space-y-2">
@@ -343,8 +399,27 @@ export default function MutatiePage() {
                         type="number"
                         min="0"
                         value={geladenBleche}
-                        onChange={(e) => setGeladenBleche(parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '') {
+                            setGeladenBleche('0');
+                          } else {
+                            const numValue = value.replace(/^0+/, '') || '0';
+                            setGeladenBleche(numValue);
+                          }
+                        }}
+                        onFocus={(e) => {
+                          if (e.target.value === '0') {
+                            e.target.select();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value === '') {
+                            setGeladenBleche('0');
+                          }
+                        }}
                         required
+                        disabled={loading}
                       />
                     </div>
                   </div>
