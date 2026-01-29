@@ -37,6 +37,21 @@ export interface Overzicht {
   balans: number;
 }
 
+export interface FustOverzicht {
+  id: number;
+  nummer: string;
+  naam: string | null;
+  type: 'klant' | 'leverancier';
+  // CC-TAG6 balansen
+  cactag6_geladen: number;
+  cactag6_gelost: number;
+  cactag6_balans: number;
+  // Bleche balansen
+  bleche_geladen: number;
+  bleche_gelost: number;
+  bleche_balans: number;
+}
+
 export async function getPartijen(): Promise<Partij[]> {
   const { data, error } = await supabase
     .from('partijen')
@@ -88,6 +103,17 @@ export async function createMutatie(
   gelostCactag6: number = 0,
   gelostBleche: number = 0
 ): Promise<number> {
+  console.log('createMutatie: Creating mutatie:', {
+    partijId,
+    datum,
+    geladen,
+    gelost,
+    geladenCactag6,
+    geladenBleche,
+    gelostCactag6,
+    gelostBleche
+  });
+  
   const { data, error } = await supabase
     .from('fust_mutaties')
     .insert({
@@ -103,7 +129,12 @@ export async function createMutatie(
     .select('id')
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('createMutatie: Error inserting mutatie:', error);
+    throw error;
+  }
+  
+  console.log('createMutatie: Mutatie created successfully with ID:', data.id);
   return data.id;
 }
 
@@ -111,8 +142,8 @@ export async function getMutaties(): Promise<Mutatie[]> {
   const { data: mutaties, error: mutatiesError } = await supabase
     .from('fust_mutaties')
     .select('*')
-    .order('datum', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false }) // Eerst op created_at (nieuwste eerst)
+    .order('datum', { ascending: false }); // Dan op datum als tie-breaker
 
   if (mutatiesError) {
     console.error('Error fetching mutaties:', mutatiesError);
@@ -286,3 +317,185 @@ export async function deleteMutatie(id: number): Promise<boolean> {
   return true;
 }
 
+export async function getFustOverzicht(): Promise<FustOverzicht[]> {
+  console.log('getFustOverzicht: Starting...');
+  
+  // Haal alle partijen op
+  const { data: partijen, error: partijenError } = await supabase
+    .from('partijen')
+    .select('*')
+    .order('type', { ascending: true })
+    .order('nummer', { ascending: true });
+
+  if (partijenError) {
+    console.error('getFustOverzicht: Error fetching partijen:', partijenError);
+    throw partijenError;
+  }
+
+  // Haal alle mutaties op met CC-TAG6 en Bleche details (inclusief datum en created_at voor sortering)
+  const { data: mutaties, error: mutatiesError } = await supabase
+    .from('fust_mutaties')
+    .select('partij_id, datum, created_at, geladen_cactag6, geladen_bleche, gelost_cactag6, gelost_bleche');
+
+  if (mutatiesError) {
+    console.error('getFustOverzicht: Error fetching mutaties:', mutatiesError);
+    throw mutatiesError;
+  }
+
+  // Groepeer mutaties per partij (behoud alle mutaties voor sortering)
+  const mutatiesPerPartij = new Map<number, any[]>();
+
+  mutaties?.forEach((mutatie: any) => {
+    const partijId = mutatie.partij_id;
+    if (!mutatiesPerPartij.has(partijId)) {
+      mutatiesPerPartij.set(partijId, []);
+    }
+    mutatiesPerPartij.get(partijId)!.push(mutatie);
+  });
+
+  // Combineer partijen met mutaties en bereken saldi
+  const result = (partijen || []).map((partij: any) => {
+    const partijMutaties = mutatiesPerPartij.get(partij.id) || [];
+    
+    // Sorteer mutaties op datum en created_at (oudste eerst) - zoals op detailpagina
+    const gesorteerdeMutaties = [...partijMutaties].sort((a, b) => {
+      const dateDiff = new Date(a.datum).getTime() - new Date(b.datum).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const createdDiff = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      return createdDiff;
+    });
+    
+    // Bereken cumulatief saldo (zoals op detailpagina)
+    let saldoCactag6 = 0;
+    let saldoBleche = 0;
+    let totaalGeladenCactag6 = 0;
+    let totaalGelostCactag6 = 0;
+    let totaalGeladenBleche = 0;
+    let totaalGelostBleche = 0;
+    
+    gesorteerdeMutaties.forEach((mutatie: any) => {
+      const gelostCactag6 = mutatie.gelost_cactag6 || 0;
+      const geladenCactag6 = mutatie.geladen_cactag6 || 0;
+      const gelostBleche = mutatie.gelost_bleche || 0;
+      const geladenBleche = mutatie.geladen_bleche || 0;
+      
+      // Cumulatieve berekening (zoals op detailpagina)
+      saldoCactag6 = saldoCactag6 + gelostCactag6 - geladenCactag6;
+      saldoBleche = saldoBleche + gelostBleche - geladenBleche;
+      
+      // Tel ook op voor totals
+      totaalGeladenCactag6 += geladenCactag6;
+      totaalGelostCactag6 += gelostCactag6;
+      totaalGeladenBleche += geladenBleche;
+      totaalGelostBleche += gelostBleche;
+    });
+    
+    return {
+      id: partij.id,
+      nummer: partij.nummer,
+      naam: partij.naam,
+      type: partij.type,
+      cactag6_geladen: totaalGeladenCactag6,
+      cactag6_gelost: totaalGelostCactag6,
+      cactag6_balans: saldoCactag6, // Laatste cumulatieve saldo
+      bleche_geladen: totaalGeladenBleche,
+      bleche_gelost: totaalGelostBleche,
+      bleche_balans: saldoBleche, // Laatste cumulatieve saldo
+    };
+  });
+
+  return result;
+}
+
+export async function getMutatiesByPartijId(partijId: number): Promise<Mutatie[]> {
+  console.log('getMutatiesByPartijId: Fetching mutaties for partij_id:', partijId);
+  
+  // Haal ALLE mutaties op voor deze partij_id - geen filters op type, bron, verwerkt-status of datum
+  const { data: mutaties, error: mutatiesError } = await supabase
+    .from('fust_mutaties')
+    .select('*')
+    .eq('partij_id', partijId)
+    // Geen extra filters - haal ALLE mutaties op ongeacht hoe ze zijn ingevoerd
+    .order('datum', { ascending: true }) // Oudste eerst voor cumulatieve saldo berekening
+    .order('created_at', { ascending: true }); // Tie-breaker op created_at
+
+  console.log('getMutatiesByPartijId: Mutaties query result:', {
+    hasData: !!mutaties,
+    count: mutaties?.length || 0,
+    mutaties: mutaties,
+    hasError: !!mutatiesError,
+    error: mutatiesError
+  });
+
+  if (mutatiesError) {
+    console.error('Error fetching mutaties by partij_id:', mutatiesError);
+    throw mutatiesError;
+  }
+
+  if (!mutaties || mutaties.length === 0) {
+    console.warn('getMutatiesByPartijId: No mutaties found for partij_id:', partijId);
+    // Probeer nog steeds partij info op te halen
+    const { data: partij, error: partijError } = await supabase
+      .from('partijen')
+      .select('id, nummer, naam, type')
+      .eq('id', partijId)
+      .single();
+    
+    if (!partijError && partij) {
+      console.log('getMutatiesByPartijId: Partij found but no mutaties:', partij);
+    }
+    return [];
+  }
+
+  // Haal partij informatie op
+  const { data: partij, error: partijError } = await supabase
+    .from('partijen')
+    .select('id, nummer, naam, type')
+    .eq('id', partijId)
+    .single();
+
+  console.log('getMutatiesByPartijId: Partij query result:', {
+    hasData: !!partij,
+    partij: partij,
+    hasError: !!partijError,
+    error: partijError
+  });
+
+  if (partijError) {
+    console.error('Error fetching partij:', partijError);
+    throw partijError;
+  }
+
+  // Combineer mutaties met partij informatie
+  const result = mutaties.map((mutatie: any) => ({
+    ...mutatie,
+    partij_nummer: partij?.nummer,
+    partij_naam: partij?.naam,
+    partij_type: partij?.type,
+  }));
+  
+  console.log('getMutatiesByPartijId: Final result:', {
+    count: result.length,
+    firstMutatie: result[0]
+  });
+  
+  return result;
+}
+
+// Helper functie om mutaties op te halen op basis van partij nummer (voor debugging)
+export async function getMutatiesByPartijNummer(partijNummer: string): Promise<Mutatie[]> {
+  console.log('getMutatiesByPartijNummer: Fetching mutaties for partij nummer:', partijNummer);
+  
+  // Eerst de partij opzoeken op nummer
+  const partij = await getPartijByNummer(partijNummer);
+  
+  if (!partij) {
+    console.warn('getMutatiesByPartijNummer: Partij not found for nummer:', partijNummer);
+    return [];
+  }
+  
+  console.log('getMutatiesByPartijNummer: Found partij:', partij);
+  
+  // Haal mutaties op voor deze partij
+  return getMutatiesByPartijId(partij.id);
+}

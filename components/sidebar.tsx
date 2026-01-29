@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, PlusCircle, Package, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Package, Settings, LogOut, ListChecks, ArrowDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -11,6 +11,8 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/mutatie', label: 'Mutatie Invoeren', icon: PlusCircle },
   { href: '/mutatie-beheer', label: 'Mutatie Beheer', icon: Settings },
+  { href: '/fust-overzicht', label: 'Fust Overzicht', icon: ListChecks },
+  { href: '/csv-import', label: 'CSV Import', icon: ArrowDown },
 ];
 
 export function Sidebar() {
@@ -48,7 +50,7 @@ export function Sidebar() {
       <nav className="p-4 space-y-2 flex-1">
         {navItems.map((item, index) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === '/fust-overzicht' && pathname?.startsWith('/fust-overzicht')) || (item.href === '/csv-import' && pathname === '/csv-import');
           return (
             <motion.div
               key={item.href}

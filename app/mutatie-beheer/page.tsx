@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { motion } from 'framer-motion';
-import { Trash2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Trash2, RefreshCw, AlertCircle, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,8 @@ interface Mutatie {
 
 export default function MutatieBeheerPage() {
   const [mutaties, setMutaties] = useState<Mutatie[]>([]);
+  const [filteredMutaties, setFilteredMutaties] = useState<Mutatie[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -44,6 +47,23 @@ export default function MutatieBeheerPage() {
     loadMutaties();
   }, []);
 
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMutaties(mutaties);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = mutaties.filter((mutatie) => {
+        return (
+          mutatie.partij_nummer?.toLowerCase().includes(query) ||
+          mutatie.partij_naam?.toLowerCase().includes(query) ||
+          mutatie.datum.toLowerCase().includes(query) ||
+          mutatie.partij_type?.toLowerCase().includes(query)
+        );
+      });
+      setFilteredMutaties(filtered);
+    }
+  }, [searchQuery, mutaties]);
+
   async function loadMutaties() {
     setLoading(true);
     try {
@@ -53,6 +73,7 @@ export default function MutatieBeheerPage() {
         console.error('Fout bij laden mutaties:', errorData);
         setMessage({ type: 'error', text: 'Fout bij laden mutaties' });
         setMutaties([]);
+        setFilteredMutaties([]);
         return;
       }
       const data = await response.json();
@@ -60,14 +81,18 @@ export default function MutatieBeheerPage() {
         console.error('API error:', data.error);
         setMessage({ type: 'error', text: data.error });
         setMutaties([]);
+        setFilteredMutaties([]);
         return;
       }
-      setMutaties(Array.isArray(data) ? data : []);
+      const mutatiesData = Array.isArray(data) ? data : [];
+      setMutaties(mutatiesData);
+      setFilteredMutaties(mutatiesData);
       setMessage(null);
     } catch (error) {
       console.error('Fout bij laden mutaties:', error);
       setMessage({ type: 'error', text: 'Fout bij communiceren met server' });
       setMutaties([]);
+      setFilteredMutaties([]);
     } finally {
       setLoading(false);
     }
@@ -134,22 +159,41 @@ export default function MutatieBeheerPage() {
         >
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Alle Mutaties</CardTitle>
-                  <CardDescription>
-                    Totaal: {mutaties.length} mutatie{mutaties.length !== 1 ? 's' : ''}
-                  </CardDescription>
+              <div className="flex flex-col space-y-1.5 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Alle Mutaties</CardTitle>
+                    <CardDescription>
+                      Totaal: {mutaties.length} mutatie{mutaties.length !== 1 ? 's' : ''}
+                      {searchQuery && (
+                        <span className="ml-2">
+                          ({filteredMutaties.length} gevonden)
+                        </span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={loadMutaties}
+                    disabled={loading}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                    Vernieuwen
+                  </Button>
                 </div>
-                <Button
-                  onClick={loadMutaties}
-                  disabled={loading}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                  Vernieuwen
-                </Button>
+                <div className="flex items-center gap-2 mt-4">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Zoek op partij nummer, naam, datum of type..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -158,10 +202,12 @@ export default function MutatieBeheerPage() {
                   <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
                   <p className="text-gray-500 mt-2">Mutaties laden...</p>
                 </div>
-              ) : mutaties.length === 0 ? (
+              ) : filteredMutaties.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertCircle className="h-12 w-12 mx-auto text-gray-400" />
-                  <p className="text-gray-500 mt-2">Geen mutaties gevonden</p>
+                  <p className="text-gray-500 mt-2">
+                    {searchQuery ? 'Geen mutaties gevonden voor deze zoekopdracht' : 'Geen mutaties gevonden'}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -177,7 +223,7 @@ export default function MutatieBeheerPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mutaties.map((mutatie, index) => (
+                      {filteredMutaties.map((mutatie, index) => (
                         <motion.tr
                           key={mutatie.id}
                           initial={{ opacity: 0, x: -20 }}

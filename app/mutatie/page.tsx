@@ -16,9 +16,9 @@ export default function MutatiePage() {
   const [partijNummer, setPartijNummer] = useState('');
   const [partijType, setPartijType] = useState<'klant' | 'leverancier'>('klant');
   const today = new Date();
-  const [dag, setDag] = useState(today.getDate().toString());
-  const [maand, setMaand] = useState((today.getMonth() + 1).toString());
-  const [jaar, setJaar] = useState(today.getFullYear().toString());
+  const [dag, setDag] = useState('');
+  const [maand, setMaand] = useState('');
+  const [jaar, setJaar] = useState('');
   const [gelostCactag6, setGelostCactag6] = useState<string>('0');
   const [gelostBleche, setGelostBleche] = useState<string>('0');
   const [geladenCactag6, setGeladenCactag6] = useState<string>('0');
@@ -29,7 +29,60 @@ export default function MutatiePage() {
 
   useEffect(() => {
     loadRecenteMutaties();
+    loadLaatsteMutatieDatum();
   }, []);
+
+  async function loadLaatsteMutatieDatum() {
+    try {
+      const response = await fetch('/api/mutaties');
+      if (!response.ok) {
+        // Als er geen mutaties zijn, gebruik vandaag als default
+        const today = new Date();
+        setDag(today.getDate().toString());
+        setMaand((today.getMonth() + 1).toString());
+        setJaar(today.getFullYear().toString());
+        return;
+      }
+      
+      const data = await response.json();
+      if (data.error || !Array.isArray(data) || data.length === 0) {
+        // Als er geen mutaties zijn, gebruik vandaag als default
+        const today = new Date();
+        setDag(today.getDate().toString());
+        setMaand((today.getMonth() + 1).toString());
+        setJaar(today.getFullYear().toString());
+        return;
+      }
+      
+      // Sorteer op created_at en neem de nieuwste
+      const sortedMutaties = [...data].sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA;
+      });
+      
+      const laatsteMutatie = sortedMutaties[0];
+      if (laatsteMutatie && laatsteMutatie.datum) {
+        const datum = new Date(laatsteMutatie.datum);
+        setDag(datum.getDate().toString());
+        setMaand((datum.getMonth() + 1).toString());
+        setJaar(datum.getFullYear().toString());
+      } else {
+        // Fallback naar vandaag
+        const today = new Date();
+        setDag(today.getDate().toString());
+        setMaand((today.getMonth() + 1).toString());
+        setJaar(today.getFullYear().toString());
+      }
+    } catch (error) {
+      console.error('Fout bij laden laatste mutatie datum:', error);
+      // Fallback naar vandaag bij error
+      const today = new Date();
+      setDag(today.getDate().toString());
+      setMaand((today.getMonth() + 1).toString());
+      setJaar(today.getFullYear().toString());
+    }
+  }
 
   async function loadRecenteMutaties() {
     try {
@@ -46,7 +99,17 @@ export default function MutatiePage() {
         setRecenteMutaties([]);
         return;
       }
-      setRecenteMutaties(Array.isArray(data) ? data.slice(0, 10) : []); // Laatste 10 mutaties
+      
+      // Sorteer op created_at (nieuwste eerst) en neem eerste 10
+      const sortedMutaties = Array.isArray(data) 
+        ? [...data].sort((a: any, b: any) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return dateB - dateA; // Nieuwste eerst
+          })
+        : [];
+      
+      setRecenteMutaties(sortedMutaties.slice(0, 10));
     } catch (error) {
       console.error('Fout bij laden mutaties:', error);
       setRecenteMutaties([]);
@@ -67,6 +130,17 @@ export default function MutatiePage() {
     try {
       // Format datum als YYYY-MM-DD
       const datumString = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
+      
+      // Valideer dat de datum niet in de toekomst ligt
+      const ingevoerdeDatum = new Date(datumString);
+      const vandaag = new Date();
+      vandaag.setHours(23, 59, 59, 999); // Zet op einde van vandaag
+      
+      if (ingevoerdeDatum > vandaag) {
+        setMessage({ type: 'error', text: 'Je kunt geen mutaties invoeren voor toekomstige datums' });
+        setLoading(false);
+        return;
+      }
       
       const response = await fetch('/api/mutaties', {
         method: 'POST',
@@ -93,10 +167,7 @@ export default function MutatiePage() {
         setGelostBleche('0');
         setGeladenCactag6('0');
         setGeladenBleche('0');
-        const today = new Date();
-        setDag(today.getDate().toString());
-        setMaand((today.getMonth() + 1).toString());
-        setJaar(today.getFullYear().toString());
+        // Behoud de datum (niet resetten naar vandaag)
         // Herlaad recente mutaties
         loadRecenteMutaties();
       } else {
@@ -177,14 +248,16 @@ export default function MutatiePage() {
                       id="dag"
                       type="number"
                       min="1"
-                      max="31"
+                      max={new Date(parseInt(jaar) || new Date().getFullYear(), parseInt(maand) || new Date().getMonth() + 1, 0).getDate()}
                       value={dag}
                       onChange={(e) => {
                         const value = e.target.value;
-                        if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 31)) {
+                        const maxDag = new Date(parseInt(jaar) || new Date().getFullYear(), parseInt(maand) || new Date().getMonth() + 1, 0).getDate();
+                        if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= maxDag)) {
                           setDag(value);
                         }
                       }}
+                      onFocus={(e) => e.target.select()}
                       placeholder="DD"
                       required
                       className="text-center"
@@ -204,8 +277,15 @@ export default function MutatiePage() {
                         const value = e.target.value;
                         if (value === '' || (parseInt(value) >= 1 && parseInt(value) <= 12)) {
                           setMaand(value);
+                          // Reset dag als het niet meer geldig is voor de nieuwe maand
+                          const currentDag = parseInt(dag);
+                          const maxDag = new Date(parseInt(jaar) || new Date().getFullYear(), parseInt(value) || 1, 0).getDate();
+                          if (currentDag > maxDag) {
+                            setDag(maxDag.toString());
+                          }
                         }
                       }}
+                      onFocus={(e) => e.target.select()}
                       placeholder="MM"
                       required
                       className="text-center"
@@ -219,14 +299,42 @@ export default function MutatiePage() {
                       id="jaar"
                       type="number"
                       min="2000"
-                      max="2100"
+                      max={new Date().getFullYear()}
                       value={jaar}
                       onChange={(e) => {
                         const value = e.target.value;
-                        if (value === '' || (parseInt(value) >= 2000 && parseInt(value) <= 2100)) {
+                        // Sta alle numerieke invoer toe tijdens het typen
+                        if (value === '' || /^\d+$/.test(value)) {
                           setJaar(value);
                         }
                       }}
+                      onBlur={(e) => {
+                        const value = e.target.value.trim();
+                        const currentYear = new Date().getFullYear();
+                        
+                        if (value === '') {
+                          setJaar(currentYear.toString());
+                          return;
+                        }
+                        
+                        const numValue = parseInt(value);
+                        
+                        // Als het een 2-cijferig getal is (bijv. 25), maak er 20XX van
+                        if (value.length === 2 && numValue >= 0 && numValue <= 99) {
+                          const currentCentury = Math.floor(currentYear / 100) * 100;
+                          const fullYear = currentCentury + numValue;
+                          // Als het jaar in de toekomst is, gebruik vorige eeuw
+                          if (fullYear > currentYear) {
+                            setJaar((currentCentury - 100 + numValue).toString());
+                          } else {
+                            setJaar(fullYear.toString());
+                          }
+                        } else if (isNaN(numValue) || numValue < 2000 || numValue > currentYear) {
+                          // Zet terug naar huidig jaar als ongeldig of in de toekomst
+                          setJaar(currentYear.toString());
+                        }
+                      }}
+                      onFocus={(e) => e.target.select()}
                       placeholder="YYYY"
                       required
                       className="text-center"
