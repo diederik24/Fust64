@@ -5,10 +5,10 @@ interface CSVRow {
   partij_nummer: string;
   datum: string;
   partij_type: 'klant' | 'leverancier';
-  geladen_cactag6?: number;
-  geladen_bleche?: number;
-  gelost_cactag6?: number;
-  gelost_bleche?: number;
+  geladen_cactag6: number;
+  geladen_bleche: number;
+  gelost_cactag6: number;
+  gelost_bleche: number;
 }
 
 function parseCSV(text: string): string[][] {

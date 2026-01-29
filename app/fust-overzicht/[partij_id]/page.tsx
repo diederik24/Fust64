@@ -170,10 +170,10 @@ export default function PartijDetailPage() {
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">
             KLANT: {partijInfo.nummer || 'Laden...'}
+            {partijInfo.naam && (
+              <span className="ml-3 text-2xl font-normal text-gray-600">- {partijInfo.naam}</span>
+            )}
           </h1>
-          {partijInfo.naam && (
-            <p className="text-gray-600 mt-2">{partijInfo.naam}</p>
-          )}
         </div>
 
         <motion.div
