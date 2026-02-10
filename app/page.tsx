@@ -16,41 +16,52 @@ export default function Dashboard() {
     totaalGelost: 0,
   });
   const [recenteMutaties, setRecenteMutaties] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
-    console.log('Dashboard: Loading data...');
-    const [overzicht, mutaties] = await Promise.all([
-      getOverzicht(),
-      getMutaties(),
-    ]);
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Dashboard: Loading data...');
+      const [overzicht, mutaties] = await Promise.all([
+        getOverzicht(),
+        getMutaties(),
+      ]);
 
-    console.log('Dashboard: Data loaded:', {
-      overzichtCount: overzicht.length,
-      mutatiesCount: mutaties.length,
-      mutaties: mutaties
-    });
+      console.log('Dashboard: Data loaded:', {
+        overzichtCount: overzicht.length,
+        mutatiesCount: mutaties.length,
+        mutaties: mutaties
+      });
 
-    const totaalPartijen = overzicht.length;
-    const totaalKlanten = overzicht.filter(p => p.type === 'klant').length;
-    const totaalLeveranciers = overzicht.filter(p => p.type === 'leverancier').length;
-    const totaalGeladen = overzicht.reduce((sum, p) => sum + p.totaal_geladen, 0);
-    const totaalGelost = overzicht.reduce((sum, p) => sum + p.totaal_gelost, 0);
+      const totaalPartijen = overzicht.length;
+      const totaalKlanten = overzicht.filter(p => p.type === 'klant').length;
+      const totaalLeveranciers = overzicht.filter(p => p.type === 'leverancier').length;
+      const totaalGeladen = overzicht.reduce((sum, p) => sum + p.totaal_geladen, 0);
+      const totaalGelost = overzicht.reduce((sum, p) => sum + p.totaal_gelost, 0);
 
-    setStats({
-      totaalPartijen,
-      totaalKlanten,
-      totaalLeveranciers,
-      totaalGeladen,
-      totaalGelost,
-    });
+      setStats({
+        totaalPartijen,
+        totaalKlanten,
+        totaalLeveranciers,
+        totaalGeladen,
+        totaalGelost,
+      });
 
-    const recente = mutaties.slice(0, 5);
-    console.log('Dashboard: Setting recente mutaties:', recente.length, recente);
-    setRecenteMutaties(recente);
+      const recente = mutaties.slice(0, 5);
+      console.log('Dashboard: Setting recente mutaties:', recente.length, recente);
+      setRecenteMutaties(recente);
+    } catch (err: any) {
+      console.error('Dashboard: Error loading data:', err);
+      setError(err?.message || 'Fout bij laden van data. Controleer de console voor meer details.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -70,6 +81,25 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 font-semibold">Fout:</p>
+            <p className="text-red-700 text-sm mt-1">{error}</p>
+            <button
+              onClick={loadData}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            >
+              Probeer opnieuw
+            </button>
+          </div>
+        )}
+
+        {loading && !error && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-blue-800">Data wordt geladen...</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <motion.div

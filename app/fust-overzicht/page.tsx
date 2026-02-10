@@ -45,38 +45,91 @@ export default function FustOverzichtPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Fout bij laden overzicht:', errorData);
+        setOverzicht([]);
         return;
       }
       const data = await response.json();
-      setOverzicht(Array.isArray(data) ? data : []);
+      const overzichtData = Array.isArray(data) ? data : [];
+      
+      const leveranciers = overzichtData.filter((item: FustOverzicht) => item.type === 'leverancier');
+      const klanten = overzichtData.filter((item: FustOverzicht) => item.type === 'klant');
+      
+      console.log('=== OVERZICHT GELADEN ===');
+      console.log('Raw data:', data);
+      console.log('Overzicht data array:', {
+        totaal: overzichtData.length,
+        klanten: klanten.length,
+        leveranciers: leveranciers.length,
+        leveranciersData: leveranciers,
+        alleData: overzichtData,
+        sampleKlant: klanten[0],
+        sampleLeverancier: leveranciers[0]
+      });
+      
+      // Check specifiek voor ASB
+      const asb = overzichtData.find((item: FustOverzicht) => item.nummer === 'ASB');
+      console.log('ASB gevonden:', asb);
+      
+      setOverzicht(overzichtData);
     } catch (error) {
       console.error('Fout bij laden overzicht:', error);
+      setOverzicht([]);
     } finally {
       setLoading(false);
     }
   }
 
   const gefilterd = (() => {
-    let filtered = overzicht;
+    let filtered = [...overzicht]; // Maak een kopie om te voorkomen dat we de originele array muteren
+    
+    console.log('=== FILTERING START ===');
+    console.log('Overzicht data:', {
+      totaal: overzicht.length,
+      leveranciers: overzicht.filter(item => item.type === 'leverancier'),
+      typeFilter,
+      balansFilter
+    });
     
     // Eerst filteren op type
     if (typeFilter === 'klant') {
-      filtered = overzicht.filter(item => item.type === 'klant');
+      filtered = filtered.filter(item => item.type === 'klant');
     } else if (typeFilter === 'leverancier') {
-      filtered = overzicht.filter(item => item.type === 'leverancier');
+      filtered = filtered.filter(item => item.type === 'leverancier');
+      console.log('Na type filter (leverancier):', filtered);
     }
     // typeFilter === 'all' betekent alle types, dus geen filter
     
     // Dan filteren op balans (werkt voor zowel klanten als leveranciers op basis van typeFilter)
+    // Alleen filteren als balansFilter niet 'none' is
     if (balansFilter === 'positief') {
+      const voorBalansFilter = filtered.length;
       filtered = filtered.filter(item => 
         (item.cactag6_balans > 0 || item.bleche_balans > 0)
       );
+      console.log('Na balans filter (positief):', {
+        voor: voorBalansFilter,
+        na: filtered.length,
+        gefilterd: filtered
+      });
     } else if (balansFilter === 'negatief') {
+      const voorBalansFilter = filtered.length;
       filtered = filtered.filter(item => 
         (item.cactag6_balans < 0 || item.bleche_balans < 0)
       );
+      console.log('Na balans filter (negatief):', {
+        voor: voorBalansFilter,
+        na: filtered.length,
+        gefilterd: filtered
+      });
     }
+    // balansFilter === 'none' betekent alle balansen tonen (ook 0)
+    
+    console.log('=== FILTERING EINDE ===', {
+      typeFilter,
+      balansFilter,
+      resultaat: filtered.length,
+      data: filtered
+    });
     
     return filtered;
   })().filter(item => {
@@ -460,7 +513,9 @@ export default function FustOverzichtPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[120px]">Klanten</TableHead>
+                        <TableHead className="w-[120px]">
+                          {typeFilter === 'all' ? 'Klant/Leverancier' : typeFilter === 'klant' ? 'Klant' : 'Leverancier'}
+                        </TableHead>
                         <TableHead className="text-center bg-yellow-50">CC TAG6</TableHead>
                         <TableHead className="text-center">Platen</TableHead>
                         <TableHead className="text-right w-[100px]">Acties</TableHead>

@@ -320,17 +320,70 @@ export async function deleteMutatie(id: number): Promise<boolean> {
 export async function getFustOverzicht(): Promise<FustOverzicht[]> {
   console.log('getFustOverzicht: Starting...');
   
-  // Haal alle partijen op
-  const { data: partijen, error: partijenError } = await supabase
-    .from('partijen')
-    .select('*')
-    .order('type', { ascending: true })
-    .order('nummer', { ascending: true });
-
-  if (partijenError) {
-    console.error('getFustOverzicht: Error fetching partijen:', partijenError);
-    throw partijenError;
+  // Haal alle partijen op met paginering om ervoor te zorgen dat we alle records krijgen
+  // Supabase heeft standaard een limiet, dus we moeten alle pagina's ophalen
+  let allPartijen: any[] = [];
+  let page = 0;
+  const pageSize = 1000; // Supabase max per request
+  let hasMore = true;
+  
+  while (hasMore) {
+    const { data: partijenPage, error: partijenError, count } = await supabase
+      .from('partijen')
+      .select('*', { count: 'exact' })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+    
+    if (partijenError) {
+      console.error('getFustOverzicht: Error fetching partijen (page ' + page + '):', partijenError);
+      throw partijenError;
+    }
+    
+    if (partijenPage && partijenPage.length > 0) {
+      allPartijen = [...allPartijen, ...partijenPage];
+      page++;
+      // Als we minder dan pageSize records hebben gekregen, zijn we klaar
+      hasMore = partijenPage.length === pageSize;
+    } else {
+      hasMore = false;
+    }
+    
+    // Safety check: stop als we meer dan 10.000 records hebben (ongewoon veel)
+    if (allPartijen.length > 10000) {
+      console.warn('getFustOverzicht: Stopping pagination at 10,000 records');
+      hasMore = false;
+    }
   }
+  
+  console.log('getFustOverzicht: Alle partijen opgehaald via paginering:', {
+    totaalRecords: allPartijen.length,
+    aantalPaginas: page
+  });
+  
+  // Sorteer handmatig in JavaScript
+  const partijen = allPartijen.sort((a: any, b: any) => {
+    // Eerst op type (klant komt eerst, dan leverancier)
+    const typeOrder = { 'klant': 0, 'leverancier': 1 };
+    const aOrder = typeOrder[a.type as keyof typeof typeOrder] ?? 2;
+    const bOrder = typeOrder[b.type as keyof typeof typeOrder] ?? 2;
+    if (aOrder !== bOrder) {
+      return aOrder - bOrder;
+    }
+    // Dan op nummer
+    return String(a.nummer || '').localeCompare(String(b.nummer || ''));
+  });
+  
+  // partijenError wordt al gecheckt tijdens paginering, dus hier hoeven we niet meer te checken
+
+  console.log('getFustOverzicht: Partijen opgehaald:', {
+    totaal: partijen?.length || 0,
+    klanten: partijen?.filter((p: any) => p.type === 'klant').length || 0,
+    leveranciers: partijen?.filter((p: any) => p.type === 'leverancier').length || 0,
+    asbPartij: partijen?.find((p: any) => p.nummer === 'ASB'),
+    asbPartijType: partijen?.find((p: any) => p.nummer === 'ASB')?.type,
+    sampleTypes: partijen?.slice(0, 10).map((p: any) => ({ nummer: p.nummer, type: p.type })),
+    alleTypesInData: [...new Set(partijen?.map((p: any) => p.type) || [])],
+    rawPartijenSample: partijen?.slice(0, 3)
+  });
 
   // Haal alle mutaties op met CC-TAG6 en Bleche details (inclusief datum en created_at voor sortering)
   const { data: mutaties, error: mutatiesError } = await supabase
@@ -402,6 +455,21 @@ export async function getFustOverzicht(): Promise<FustOverzicht[]> {
       bleche_gelost: totaalGelostBleche,
       bleche_balans: saldoBleche, // Laatste cumulatieve saldo
     };
+  });
+
+  const leveranciers = result.filter((item: any) => item.type === 'leverancier');
+  const asbItem = result.find((item: any) => item.nummer === 'ASB');
+  
+  console.log('getFustOverzicht: Result:', {
+    totaal: result.length,
+    klanten: result.filter((item: any) => item.type === 'klant').length,
+    leveranciers: leveranciers.length,
+    leveranciersData: leveranciers.slice(0, 5),
+    asb: asbItem,
+    asbType: asbItem?.type,
+    asbTypeCheck: asbItem?.type === 'leverancier',
+    alleTypes: [...new Set(result.map((item: any) => item.type))],
+    sampleResult: result.slice(0, 3).map((item: any) => ({ nummer: item.nummer, type: item.type }))
   });
 
   return result;

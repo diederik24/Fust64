@@ -1,32 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseUrl() {
-  if (typeof window !== 'undefined') {
-    // Client-side
-    return process.env.NEXT_PUBLIC_SUPABASE_URL;
-  }
-  // Server-side
-  return process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Fallback to default if env var not set
+  return process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fdvjbibaphpyiobqbuvf.supabase.co';
 }
 
 function getSupabaseAnonKey() {
-  if (typeof window !== 'undefined') {
-    // Client-side
-    return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  }
-  // Server-side
-  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Fallback to default if env var not set
+  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkdmpiaWJhcGhweWlvYnFidXZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2Nzk5OTYsImV4cCI6MjA4MzI1NTk5Nn0.EM-6CI9r-IIRU06ihxPbDAYzLjP7_-vyiuhOOl5htk4';
 }
 
 const supabaseUrl = getSupabaseUrl();
 const supabaseAnonKey = getSupabaseAnonKey();
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
-  console.error('URL:', supabaseUrl ? 'Present' : 'Missing');
-  console.error('Key:', supabaseAnonKey ? 'Present (first 20 chars: ' + supabaseAnonKey.substring(0, 20) + '...)' : 'Missing');
-  throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
-}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

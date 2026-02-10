@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { motion } from 'framer-motion';
-import { Calendar, ArrowUp, ArrowDown, Save, Hash, Clock } from 'lucide-react';
+import { Calendar, ArrowUp, ArrowDown, Save, Hash, Clock, Search } from 'lucide-react';
+import { getPartijen, Partij } from '@/lib/db-supabase';
 
 export default function MutatiePage() {
   const [partijNummer, setPartijNummer] = useState('');
@@ -26,11 +27,42 @@ export default function MutatiePage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [recenteMutaties, setRecenteMutaties] = useState<any[]>([]);
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [leveranciers, setLeveranciers] = useState<Partij[]>([]);
+  const [filteredLeveranciers, setFilteredLeveranciers] = useState<Partij[]>([]);
 
   useEffect(() => {
     loadRecenteMutaties();
     loadLaatsteMutatieDatum();
+    loadLeveranciers();
   }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredLeveranciers(leveranciers);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredLeveranciers(
+        leveranciers.filter(
+          (leverancier) =>
+            leverancier.naam?.toLowerCase().includes(query) ||
+            leverancier.nummer.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery, leveranciers]);
+
+  async function loadLeveranciers() {
+    try {
+      const allPartijen = await getPartijen();
+      const leveranciersList = allPartijen.filter((p) => p.type === 'leverancier');
+      setLeveranciers(leveranciersList);
+      setFilteredLeveranciers(leveranciersList);
+    } catch (error) {
+      console.error('Fout bij laden leveranciers:', error);
+    }
+  }
 
   async function loadLaatsteMutatieDatum() {
     try {
@@ -213,6 +245,19 @@ export default function MutatiePage() {
                     type="text"
                     value={partijNummer}
                     onChange={(e) => setPartijNummer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (partijType === 'leverancier' && e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        e.preventDefault();
+                        setSearchDialogOpen(true);
+                        setSearchQuery('');
+                      }
+                    }}
+                    onFocus={() => {
+                      if (partijType === 'leverancier') {
+                        // Reload leveranciers when focusing on the field
+                        loadLeveranciers();
+                      }
+                    }}
                     placeholder={partijType === 'leverancier' ? 'Voer kweker nummer in' : 'Voer klant nummer in'}
                     required
                   />
@@ -552,6 +597,54 @@ export default function MutatiePage() {
           </CardContent>
         </Card>
         </motion.div>
+
+        <Dialog open={searchDialogOpen} onOpenChange={setSearchDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Zoek Leverancier</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Zoek op naam of nummer..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-[400px] overflow-y-auto border rounded-md">
+                {filteredLeveranciers.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    {searchQuery.trim() === '' ? 'Begin met typen om te zoeken...' : 'Geen leveranciers gevonden'}
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {filteredLeveranciers.map((leverancier) => (
+                      <button
+                        key={leverancier.id}
+                        type="button"
+                        onClick={() => {
+                          setPartijNummer(leverancier.nummer);
+                          setSearchDialogOpen(false);
+                          setSearchQuery('');
+                        }}
+                        className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="font-medium">{leverancier.nummer}</div>
+                        {leverancier.naam && (
+                          <div className="text-sm text-muted-foreground">{leverancier.naam}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
