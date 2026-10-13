@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { Sidebar } from '@/components/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { motion } from 'framer-motion';
 import { Package, RefreshCw, AlertCircle, Eye, Search, X, ChevronDown } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -26,13 +26,48 @@ interface FustOverzicht {
   bleche_balans: number;
 }
 
-export default function FustOverzichtPage() {
+type TypeFilter = 'all' | 'klant' | 'leverancier';
+type BalansFilter = 'none' | 'positief' | 'negatief';
+
+function buildOverzichtQuery(
+  typeFilter: TypeFilter,
+  balansFilter: BalansFilter,
+  searchQuery: string
+): string {
+  const params = new URLSearchParams();
+  if (typeFilter !== 'klant') params.set('type', typeFilter);
+  if (balansFilter !== 'none') params.set('balans', balansFilter);
+  const q = searchQuery.trim();
+  if (q) params.set('q', q);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function FustOverzichtPageContent() {
   const [overzicht, setOverzicht] = useState<FustOverzicht[]>([]);
   const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'klant' | 'leverancier'>('klant');
-  const [balansFilter, setBalansFilter] = useState<'none' | 'positief' | 'negatief'>('none');
-  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const typeParam = searchParams.get('type');
+  const balansParam = searchParams.get('balans');
+  const typeFilter: TypeFilter =
+    typeParam === 'all' || typeParam === 'leverancier' || typeParam === 'klant'
+      ? typeParam
+      : 'klant';
+  const balansFilter: BalansFilter =
+    balansParam === 'positief' || balansParam === 'negatief' ? balansParam : 'none';
+  const searchQuery = searchParams.get('q') || '';
+
+  const updateFilters = useCallback(
+    (next: { type?: TypeFilter; balans?: BalansFilter; q?: string }) => {
+      const type = next.type ?? typeFilter;
+      const balans = next.balans ?? balansFilter;
+      const q = next.q !== undefined ? next.q : searchQuery;
+      router.replace(`/fust-overzicht${buildOverzichtQuery(type, balans, q)}`, { scroll: false });
+    },
+    [router, typeFilter, balansFilter, searchQuery]
+  );
 
   useEffect(() => {
     loadOverzicht();
@@ -471,29 +506,20 @@ export default function FustOverzichtPage() {
           <div className="flex gap-2">
             <Button
               variant={typeFilter === 'all' && balansFilter === 'none' ? 'default' : 'outline'}
-              onClick={() => {
-                setTypeFilter('all');
-                setBalansFilter('none'); // Reset balans filter
-              }}
+              onClick={() => updateFilters({ type: 'all', balans: 'none' })}
             >
               <Package className="mr-2 h-4 w-4" />
               Alles
             </Button>
             <Button
               variant={typeFilter === 'klant' && balansFilter === 'none' ? 'default' : 'outline'}
-              onClick={() => {
-                setTypeFilter('klant');
-                setBalansFilter('none'); // Reset balans filter
-              }}
+              onClick={() => updateFilters({ type: 'klant', balans: 'none' })}
             >
               Klanten
             </Button>
             <Button
               variant={typeFilter === 'leverancier' && balansFilter === 'none' ? 'default' : 'outline'}
-              onClick={() => {
-                setTypeFilter('leverancier');
-                setBalansFilter('none'); // Reset balans filter
-              }}
+              onClick={() => updateFilters({ type: 'leverancier', balans: 'none' })}
             >
               Leveranciers
             </Button>
@@ -501,27 +527,33 @@ export default function FustOverzichtPage() {
           <div className="flex gap-2 border-l pl-4 ml-2 items-center">
             <Button
               variant={balansFilter === 'positief' ? 'default' : 'outline'}
-              onClick={() => {
-                setBalansFilter('positief');
-                // Als 'all' actief is, zet op klant (default)
-                if (typeFilter === 'all') {
-                  setTypeFilter('klant');
-                }
-              }}
-              className="text-green-700 border-green-300 hover:bg-green-50"
+              onClick={() =>
+                updateFilters({
+                  balans: 'positief',
+                  type: typeFilter === 'all' ? 'klant' : typeFilter,
+                })
+              }
+              className={
+                balansFilter === 'positief'
+                  ? 'text-white hover:text-white'
+                  : 'text-green-700 border-green-300 hover:bg-green-50'
+              }
             >
               + Tegoed Arno Straver
             </Button>
             <Button
               variant={balansFilter === 'negatief' ? 'default' : 'outline'}
-              onClick={() => {
-                setBalansFilter('negatief');
-                // Als 'all' actief is, zet op klant (default)
-                if (typeFilter === 'all') {
-                  setTypeFilter('klant');
-                }
-              }}
-              className="text-red-700 border-red-300 hover:bg-red-50"
+              onClick={() =>
+                updateFilters({
+                  balans: 'negatief',
+                  type: typeFilter === 'all' ? 'klant' : typeFilter,
+                })
+              }
+              className={
+                balansFilter === 'negatief'
+                  ? 'text-white hover:text-white'
+                  : 'text-red-700 border-red-300 hover:bg-red-50'
+              }
             >
               - Tegoed klant
             </Button>
@@ -529,9 +561,7 @@ export default function FustOverzichtPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setBalansFilter('none');
-                }}
+                onClick={() => updateFilters({ balans: 'none' })}
                 className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                 title="Filter verwijderen"
               >
@@ -622,7 +652,7 @@ export default function FustOverzichtPage() {
                       type="text"
                       placeholder="Zoek op nummer of naam..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => updateFilters({ q: e.target.value })}
                       className="pl-10"
                     />
                   </div>
@@ -690,7 +720,11 @@ export default function FustOverzichtPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => router.push(`/fust-overzicht/${item.id}`)}
+                              onClick={() =>
+                                router.push(
+                                  `/fust-overzicht/${item.id}${buildOverzichtQuery(typeFilter, balansFilter, searchQuery)}`
+                                )
+                              }
                               className="flex items-center gap-2"
                             >
                               <Eye className="h-4 w-4" />
@@ -708,5 +742,22 @@ export default function FustOverzichtPage() {
         </motion.div>
       </main>
     </div>
+  );
+}
+
+export default function FustOverzichtPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen bg-gray-50">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-8">
+            <p className="text-gray-500">Overzicht laden...</p>
+          </main>
+        </div>
+      }
+    >
+      <FustOverzichtPageContent />
+    </Suspense>
   );
 }

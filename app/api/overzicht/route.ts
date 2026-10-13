@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getOverzicht } from '@/lib/db-provider';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   console.log('GET /api/overzicht: Request received');
   try {

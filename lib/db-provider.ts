@@ -17,9 +17,17 @@ export type {
   FustOverzicht,
 } from './db-types';
 
-const provider =
-  (process.env.DB_PROVIDER as 'neon' | 'supabase' | undefined) ||
-  (process.env.DATABASE_URL ? 'neon' : 'supabase');
+function resolveProvider(): 'neon' | 'supabase' {
+  const raw = (process.env.DB_PROVIDER || '').trim().replace(/^['"]|['"]$/g, '');
+  if (raw === 'supabase') return 'supabase';
+  if (raw === 'neon') return 'neon';
+  // Negeer placeholders zoals [SENSITIVE] uit vercel env pull
+  return process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('[SENSITIVE]')
+    ? 'neon'
+    : 'supabase';
+}
+
+const provider = resolveProvider();
 
 export const dbProvider = provider;
 

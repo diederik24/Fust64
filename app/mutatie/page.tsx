@@ -278,13 +278,13 @@ export default function MutatiePage() {
           >
             <Card>
               <CardHeader>
-                <div className="flex items-start justify-between gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                   <div className="space-y-1.5">
                     <CardTitle>Nieuwe Mutatie</CardTitle>
                     <CardDescription>Voer de details van de mutatie in</CardDescription>
                   </div>
                   <motion.div
-                    className="shrink-0 w-[220px] max-w-[55%] space-y-1.5"
+                    className="space-y-2 w-full"
                     initial={false}
                     animate={{ opacity: partijType === 'leverancier' ? 1 : 0 }}
                     transition={{ duration: 0.22, ease: 'easeInOut' }}
@@ -293,9 +293,11 @@ export default function MutatiePage() {
                     }}
                     aria-hidden={partijType !== 'leverancier'}
                   >
-                    <p className="text-sm font-medium leading-none">Kweker naam</p>
+                    <p className="text-sm font-medium leading-none flex h-4 items-center">
+                      Kweker naam
+                    </p>
                     <div
-                      className="min-h-[40px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 truncate"
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-medium text-gray-800 truncate"
                       title={kwekerNaam || (kwekerVakjeTekst || undefined)}
                     >
                       {kwekerNaam

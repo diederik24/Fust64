@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,10 +26,16 @@ interface MutatieMetSaldo extends Mutatie {
   saldo_bleche: number;
 }
 
-export default function PartijDetailPage() {
+function PartijDetailPageContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const partijId = params.partij_id as string;
+
+  const overzichtQuery = searchParams.toString();
+  const terugHref = overzichtQuery
+    ? `/fust-overzicht?${overzichtQuery}`
+    : '/fust-overzicht';
   
   const [mutaties, setMutaties] = useState<Mutatie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +168,7 @@ export default function PartijDetailPage() {
         <div className="mb-8">
           <Button
             variant="outline"
-            onClick={() => router.push('/fust-overzicht')}
+            onClick={() => router.push(terugHref)}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -377,5 +383,22 @@ export default function PartijDetailPage() {
         </motion.div>
       </main>
     </div>
+  );
+}
+
+export default function PartijDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen bg-gray-50">
+          <Sidebar />
+          <main className="flex-1 ml-64 p-8">
+            <p className="text-gray-500">Laden...</p>
+          </main>
+        </div>
+      }
+    >
+      <PartijDetailPageContent />
+    </Suspense>
   );
 }

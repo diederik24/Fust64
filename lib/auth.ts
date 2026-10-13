@@ -1,42 +1,57 @@
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
+import { queryOne } from '@/lib/neon-db';
 
 const SESSION_COOKIE_NAME = 'fust-auth-session';
-const SESSION_SECRET = 'fust-beheer-secret-key'; // In productie: gebruik een environment variable
+const SESSION_SECRET =
+  process.env.AUTH_SECRET || process.env.SESSION_SECRET || 'fust-beheer-secret-key';
 
 export interface User {
   email: string;
 }
 
-const VALID_EMAIL = 'administratie@arnostraver.nl';
-const VALID_PASSWORD = 'Middenweg23!';
-
 export async function validateCredentials(email: string, password: string): Promise<boolean> {
-  return email === VALID_EMAIL && password === VALID_PASSWORD;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || !password) return false;
+
+  const user = await queryOne<{ email: string; password_hash: string }>(
+    `SELECT email, password_hash FROM users WHERE lower(email) = $1 LIMIT 1`,
+    [normalized]
+  );
+
+  if (!user?.password_hash) return false;
+  return bcrypt.compare(password, user.password_hash);
 }
 
 export async function createSession(email: string): Promise<string> {
-  // In productie: gebruik een JWT token of een veilige sessie ID
-  const sessionId = Buffer.from(`${email}:${Date.now()}:${SESSION_SECRET}`).toString('base64');
+  const sessionId = Buffer.from(
+    `${email.trim().toLowerCase()}:${Date.now()}:${SESSION_SECRET}`
+  ).toString('base64');
   return sessionId;
 }
 
 export async function getSession(): Promise<User | null> {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
-  
+
   if (!sessionCookie) {
     return null;
   }
 
   try {
-    // Decode de sessie (in productie: verifieer de sessie)
     const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
     const [email] = decoded.split(':');
-    
-    if (email === VALID_EMAIL) {
-      return { email };
+    if (!email) return null;
+
+    const user = await queryOne<{ email: string }>(
+      `SELECT email FROM users WHERE lower(email) = $1 LIMIT 1`,
+      [email.trim().toLowerCase()]
+    );
+
+    if (user?.email) {
+      return { email: user.email };
     }
-  } catch (error) {
+  } catch {
     return null;
   }
 
@@ -62,12 +77,13 @@ export async function deleteSessionCookie() {
 // Client-side helper functions
 export function getClientSession(): string | null {
   if (typeof window === 'undefined') return null;
-  
-  const cookies = document.cookie.split(';');
-  const sessionCookie = cookies.find(c => c.trim().startsWith(`${SESSION_COOKIE_NAME}=`));
-  
+
+  const allCookies = document.cookie.split(';');
+  const sessionCookie = allCookies.find((c) =>
+    c.trim().startsWith(`${SESSION_COOKIE_NAME}=`)
+  );
+
   if (!sessionCookie) return null;
-  
+
   return sessionCookie.split('=')[1];
 }
-
