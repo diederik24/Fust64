@@ -141,6 +141,7 @@ export async function createMutatie(
      RETURNING id`,
     [partijId, datum, geladen, gelost, geladenCactag6, geladenBleche, gelostCactag6, gelostBleche]
   );
+  if (!row) throw new Error('Fout bij aanmaken mutatie');
   return Number(row.id);
 }
 
