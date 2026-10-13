@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { motion } from 'framer-motion';
 import { Calendar, ArrowUp, ArrowDown, Save, Hash, Clock, Search } from 'lucide-react';
-import { getPartijen, Partij } from '@/lib/db-supabase';
+import type { Partij } from '@/lib/db-types';
 
 export default function MutatiePage() {
   const [partijNummer, setPartijNummer] = useState('');
@@ -31,6 +31,7 @@ export default function MutatiePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [leveranciers, setLeveranciers] = useState<Partij[]>([]);
   const [filteredLeveranciers, setFilteredLeveranciers] = useState<Partij[]>([]);
+  const [kwekerTypedText, setKwekerTypedText] = useState('');
 
   useEffect(() => {
     loadRecenteMutaties();
@@ -53,9 +54,45 @@ export default function MutatiePage() {
     }
   }, [searchQuery, leveranciers]);
 
+  const herkendeKweker =
+    partijType === 'leverancier' && partijNummer.trim() !== ''
+      ? leveranciers.find((l) => l.nummer.toUpperCase() === partijNummer.trim().toUpperCase())
+      : undefined;
+
+  const kwekerNaam = herkendeKweker?.naam?.trim() || herkendeKweker?.nummer || null;
+  const kwekerVakjeTekst =
+    partijType !== 'leverancier'
+      ? ''
+      : partijNummer.trim() === ''
+        ? ''
+        : kwekerNaam || 'Onbekend nummer';
+
+  // Uittyp-animatie alleen bij herkende kweker; bij wissel opnieuw vanaf leeg
+  useEffect(() => {
+    if (partijType !== 'leverancier' || !kwekerNaam) {
+      setKwekerTypedText('');
+      return;
+    }
+
+    setKwekerTypedText('');
+    let i = 0;
+    const full = kwekerNaam;
+    const interval = window.setInterval(() => {
+      i += 1;
+      setKwekerTypedText(full.slice(0, i));
+      if (i >= full.length) {
+        window.clearInterval(interval);
+      }
+    }, 35);
+
+    return () => window.clearInterval(interval);
+  }, [partijType, kwekerNaam]);
+
   async function loadLeveranciers() {
     try {
-      const allPartijen = await getPartijen();
+      const response = await fetch('/api/partijen');
+      if (!response.ok) throw new Error('Kon partijen niet laden');
+      const allPartijen: Partij[] = await response.json();
       const leveranciersList = allPartijen.filter((p) => p.type === 'leverancier');
       setLeveranciers(leveranciersList);
       setFilteredLeveranciers(leveranciersList);
@@ -159,6 +196,18 @@ export default function MutatiePage() {
       return;
     }
 
+    if (partijType === 'klant' && !/^\d+$/.test(partijNummer.trim())) {
+      setMessage({ type: 'error', text: 'Klantnummer mag alleen cijfers bevatten' });
+      setLoading(false);
+      return;
+    }
+
+    if (partijType === 'leverancier' && !herkendeKweker) {
+      setMessage({ type: 'error', text: `Onbekende kweker: ${partijNummer.trim()}` });
+      setLoading(false);
+      return;
+    }
+
     try {
       // Format datum als YYYY-MM-DD
       const datumString = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
@@ -178,7 +227,7 @@ export default function MutatiePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          partij_nummer: partijNummer.trim(),
+          partij_nummer: partijNummer.trim().toUpperCase(),
           partij_type: partijType,
           datum: datumString,
           geladen: (parseInt(geladenCactag6) || 0) + (parseInt(geladenBleche) || 0),
@@ -229,27 +278,92 @@ export default function MutatiePage() {
           >
             <Card>
               <CardHeader>
-                <CardTitle>Nieuwe Mutatie</CardTitle>
-                <CardDescription>Voer de details van de mutatie in</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <CardTitle>Nieuwe Mutatie</CardTitle>
+                    <CardDescription>Voer de details van de mutatie in</CardDescription>
+                  </div>
+                  <motion.div
+                    className="shrink-0 w-[220px] max-w-[55%] space-y-1.5"
+                    initial={false}
+                    animate={{ opacity: partijType === 'leverancier' ? 1 : 0 }}
+                    transition={{ duration: 0.22, ease: 'easeInOut' }}
+                    style={{
+                      pointerEvents: partijType === 'leverancier' ? 'auto' : 'none',
+                    }}
+                    aria-hidden={partijType !== 'leverancier'}
+                  >
+                    <p className="text-sm font-medium leading-none">Kweker naam</p>
+                    <div
+                      className="min-h-[40px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 truncate"
+                      title={kwekerNaam || (kwekerVakjeTekst || undefined)}
+                    >
+                      {kwekerNaam
+                        ? kwekerTypedText || '\u00A0'
+                        : kwekerVakjeTekst || '\u00A0'}
+                    </div>
+                  </motion.div>
+                </div>
               </CardHeader>
               <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div className="space-y-2">
-                  <Label htmlFor="partij-nummer" className="flex items-center gap-2">
-                    <Hash className="h-4 w-4" />
+                  <Label htmlFor="partij-nummer" className="flex h-4 items-center gap-2">
+                    <Hash className="h-4 w-4 shrink-0" />
                     {partijType === 'leverancier' ? 'Kweker Nummer' : 'Klant Nummer'}
                   </Label>
                   <Input
                     id="partij-nummer"
                     type="text"
+                    inputMode={partijType === 'klant' ? 'numeric' : 'text'}
                     value={partijNummer}
-                    onChange={(e) => setPartijNummer(e.target.value)}
+                    onChange={(e) => {
+                      const raw = e.target.value.toUpperCase();
+                      if (partijType === 'klant') {
+                        // Alleen cijfers; letters/tekens niet accepteren
+                        if (raw === '' || /^\d+$/.test(raw)) {
+                          setPartijNummer(raw);
+                        }
+                        return;
+                      }
+                      setPartijNummer(raw);
+                    }}
+                    onPaste={(e) => {
+                      if (partijType !== 'klant') return;
+                      const pasted = e.clipboardData.getData('text');
+                      if (!/^\d+$/.test(pasted.trim())) {
+                        e.preventDefault();
+                      }
+                    }}
                     onKeyDown={(e) => {
-                      if (partijType === 'leverancier' && e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                      const key = e.key.toLowerCase();
+                      if (partijType === 'leverancier' && key === 'f' && !e.ctrlKey && !e.metaKey && !e.altKey) {
                         e.preventDefault();
                         setSearchDialogOpen(true);
                         setSearchQuery('');
+                        return;
+                      }
+                      if (partijType === 'klant') {
+                        const allowedControl = [
+                          'backspace',
+                          'delete',
+                          'tab',
+                          'escape',
+                          'enter',
+                          'arrowleft',
+                          'arrowright',
+                          'arrowup',
+                          'arrowdown',
+                          'home',
+                          'end',
+                        ];
+                        if (allowedControl.includes(key) || e.ctrlKey || e.metaKey || e.altKey) {
+                          return;
+                        }
+                        if (!/^\d$/.test(e.key)) {
+                          e.preventDefault();
+                        }
                       }
                     }}
                     onFocus={() => {
@@ -259,15 +373,25 @@ export default function MutatiePage() {
                       }
                     }}
                     placeholder={partijType === 'leverancier' ? 'Voer kweker nummer in' : 'Voer klant nummer in'}
+                    autoCapitalize="characters"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="partij-type" className="flex items-center gap-2">
+                  <Label htmlFor="partij-type" className="flex h-4 items-center">
                     Type
                   </Label>
-                  <Select value={partijType} onValueChange={(value: 'klant' | 'leverancier') => setPartijType(value)} required>
+                  <Select
+                    value={partijType}
+                    onValueChange={(value: 'klant' | 'leverancier') => {
+                      setPartijType(value);
+                      if (value === 'klant' && partijNummer && !/^\d+$/.test(partijNummer)) {
+                        setPartijNummer('');
+                      }
+                    }}
+                    required
+                  >
                     <SelectTrigger id="partij-type">
                       <SelectValue />
                     </SelectTrigger>
@@ -589,7 +713,14 @@ export default function MutatiePage() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full">
+              <Button
+                type="submit"
+                disabled={
+                  loading ||
+                  (partijType === 'leverancier' && !herkendeKweker)
+                }
+                className="w-full"
+              >
                 <Save className="mr-2 h-4 w-4" />
                 {loading ? 'Bezig...' : 'Mutatie Invoeren'}
               </Button>
@@ -627,7 +758,7 @@ export default function MutatiePage() {
                         key={leverancier.id}
                         type="button"
                         onClick={() => {
-                          setPartijNummer(leverancier.nummer);
+                          setPartijNummer(leverancier.nummer.toUpperCase());
                           setSearchDialogOpen(false);
                           setSearchQuery('');
                         }}

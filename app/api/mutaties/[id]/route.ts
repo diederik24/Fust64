@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { deleteMutatie } from '@/lib/db-supabase';
+import { deleteMutatie } from '@/lib/db-provider';
 
 export async function DELETE(
   request: NextRequest,

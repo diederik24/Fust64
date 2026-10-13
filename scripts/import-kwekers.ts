@@ -5,7 +5,7 @@ import { resolve } from 'path';
 // Load environment variables from .env.local
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { createPartij, getPartijByNummer } from '../lib/db-supabase';
+import { createPartij, getPartijByNummer } from '../lib/db-provider';
 
 interface KwekerRow {
   code: string;

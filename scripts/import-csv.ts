@@ -5,7 +5,7 @@ import { resolve } from 'path';
 // Load environment variables from .env.local
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { createMutatie, getPartijByNummer, createPartij } from '../lib/db-supabase';
+import { createMutatie, getPartijByNummer, createPartij } from '../lib/db-provider';
 
 interface CSVRow {
   partij_nummer: string;
@@ -84,15 +84,23 @@ async function importCSV(filePath: string) {
     const rowNumber = i + 2; // +2 omdat regel 1 headers zijn en we vanaf 0 tellen
     
     try {
-      // Zoek of maak partij
-      let partij = await getPartijByNummer(row.partij_nummer);
-      if (!partij) {
-        await createPartij(row.partij_nummer, '', row.partij_type);
-        partij = await getPartijByNummer(row.partij_nummer);
+      const nummer = row.partij_nummer.trim().toUpperCase();
+      let partij = await getPartijByNummer(nummer);
+
+      if (row.partij_type === 'leverancier') {
+        if (!partij) {
+          throw new Error(`Onbekende kweker: ${nummer}`);
+        }
+        if (partij.type !== 'leverancier') {
+          throw new Error(`Nummer ${nummer} bestaat als klant, niet als kweker`);
+        }
+      } else if (!partij) {
+        await createPartij(nummer, '', 'klant');
+        partij = await getPartijByNummer(nummer);
         if (!partij) {
           throw new Error('Fout bij aanmaken partij');
         }
-        console.log(`  ✓ Partij ${row.partij_nummer} aangemaakt`);
+        console.log(`  ✓ Partij ${nummer} aangemaakt`);
       }
       
       // Maak mutatie aan

@@ -9,9 +9,18 @@
     "lint": "next lint",
     "import-csv": "tsx scripts/import-csv.ts",
     "import-kwekers": "tsx scripts/import-kwekers.ts",
-    "generate-kwekers-sql": "tsx scripts/generate-kwekers-sql.ts"
+    "generate-kwekers-sql": "tsx scripts/generate-kwekers-sql.ts",
+    "generate-voorbeeld-xlsx": "tsx scripts/generate-mutaties-voorbeeld-xlsx.ts",
+    "export-fust-overzicht-pdf": "tsx scripts/export-fust-overzicht-pdf.ts",
+    "backup-supabase": "tsx scripts/backup-supabase-to-json.ts",
+    "import-neon": "tsx scripts/import-backup-to-neon.ts",
+    "verify-neon": "tsx scripts/verify-neon-vs-backup.ts",
+    "smoke-neon": "tsx scripts/smoke-neon.ts"
   },
   "dependencies": {
+    "@neon/config": "^1.8.6",
+    "@neon/env": "^1.5.3",
+    "@neondatabase/serverless": "^1.2.0",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.0.1",
     "@radix-ui/react-popover": "^1.1.15",
@@ -28,9 +37,11 @@
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.400.0",
     "next": "^14.2.0",
+    "pg": "^8.23.1",
     "react": "^18.3.1",
     "react-day-picker": "^9.13.0",
     "react-dom": "^18.3.1",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^2.4.0",
     "tailwindcss-animate": "^1.0.7",
     "xlsx": "^0.18.5"
@@ -38,6 +49,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20.14.0",
+    "@types/pg": "^8.23.1",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",

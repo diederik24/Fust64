@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMutatiesByPartijId } from '@/lib/db-supabase';
+import { getMutatiesByPartijId } from '@/lib/db-provider';
 
 export async function GET(
   request: NextRequest,

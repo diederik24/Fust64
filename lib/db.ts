@@ -1,5 +1,5 @@
 // This file is kept for backwards compatibility
-// New code should use lib/db-supabase.ts for Supabase
+// New code should use lib/db-provider.ts (Neon default; Supabase als DB_PROVIDER=supabase)
 // or lib/db.ts for SQLite (better-sqlite3)
 
 import Database from 'better-sqlite3';

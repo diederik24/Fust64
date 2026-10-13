@@ -152,6 +152,128 @@ export default function FustOverzichtPage() {
     return 'text-gray-600';
   }
 
+  function downloadTotaalPdf() {
+    try {
+      const data = [...gefilterd].sort((a, b) =>
+        String(a.nummer || '').localeCompare(String(b.nummer || ''), 'nl', {
+          numeric: true,
+          sensitivity: 'base',
+        })
+      );
+
+      if (data.length === 0) {
+        alert('Geen data beschikbaar voor download');
+        return;
+      }
+
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text('FustOverzicht', pageWidth / 2, 16, { align: 'center' });
+
+      const filterLabel =
+        typeFilter === 'klant'
+          ? 'Klanten'
+          : typeFilter === 'leverancier'
+            ? 'Leveranciers'
+            : 'Alle partijen';
+      const balansLabel =
+        balansFilter === 'positief'
+          ? ' – Tegoed Arno Straver'
+          : balansFilter === 'negatief'
+            ? ' – Tegoed klant'
+            : '';
+
+      const datum = new Date().toLocaleDateString('nl-NL', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      doc.setFontSize(14);
+      doc.setTextColor(31, 41, 55);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Totaal overzicht – ${filterLabel}${balansLabel}`, 14, 38);
+
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Datum: ${datum}`, 14, 45);
+      doc.setFontSize(9);
+      doc.text(`Totaal: ${data.length} partij(en)`, 14, 51);
+
+      autoTable(doc, {
+        startY: 56,
+        head: [['Nummer', 'Naam', 'Type', 'CC TAG6', 'Platen']],
+        body: data.map((item) => [
+          String(item.nummer || ''),
+          String(item.naam || ''),
+          item.type === 'klant' ? 'Klant' : 'Leverancier',
+          Number(item.cactag6_balans || 0),
+          Number(item.bleche_balans || 0),
+        ]),
+        theme: 'grid',
+        styles: { fontSize: 9, cellPadding: 2.5, valign: 'middle' },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+        },
+        alternateRowStyles: { fillColor: [249, 250, 251] },
+        columnStyles: {
+          0: { cellWidth: 28, halign: 'left' },
+          1: { cellWidth: 70, halign: 'left' },
+          2: { cellWidth: 28, halign: 'center' },
+          3: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+          4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+        },
+        margin: { left: 14, right: 14, bottom: 22 },
+        didParseCell: (hookData: any) => {
+          if (hookData.section !== 'body') return;
+          if (hookData.column.index === 3 || hookData.column.index === 4) {
+            const value = Number(hookData.cell.raw ?? 0);
+            if (value > 0) hookData.cell.styles.textColor = [5, 150, 105];
+            else if (value < 0) hookData.cell.styles.textColor = [220, 38, 38];
+          }
+        },
+      });
+
+      const pageCount = doc.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.4);
+        doc.line(14, pageHeight - 14, pageWidth - 14, pageHeight - 14);
+        doc.setFontSize(8);
+        doc.setTextColor(107, 114, 128);
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          `© ${new Date().getFullYear()} Fust64 - Alle rechten voorbehouden`,
+          pageWidth / 2,
+          pageHeight - 8,
+          { align: 'center' }
+        );
+        doc.text(`Pagina ${i} / ${pageCount}`, pageWidth - 14, pageHeight - 8, {
+          align: 'right',
+        });
+      }
+
+      const dateStamp = new Date().toISOString().split('T')[0];
+      doc.save(`fust-overzicht-totaal-${dateStamp}.pdf`);
+    } catch (error) {
+      console.error('PDF download error:', error);
+      alert('Fout bij downloaden van PDF');
+    }
+  }
+
   async function handleExport(format: 'pdf' | 'excel', balansType: 'positief' | 'negatief') {
     try {
       // Filter data op basis van balans type
@@ -435,6 +557,15 @@ export default function FustOverzichtPage() {
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="end">
               <div className="space-y-1">
+                <div className="px-2 py-1.5 text-sm font-semibold text-gray-700">Totaal overzicht</div>
+                <button
+                  onClick={downloadTotaalPdf}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  <img src="/Icon pdf.png" alt="PDF" className="h-6 w-auto object-contain" />
+                  <span>Download PDF</span>
+                </button>
+                <div className="border-t my-1"></div>
                 <div className="px-2 py-1.5 text-sm font-semibold text-gray-700">+ Tegoed Arno Straver</div>
                 <button
                   onClick={() => handleExport('pdf', 'positief')}

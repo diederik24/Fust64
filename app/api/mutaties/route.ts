@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMutatie, getMutaties, getPartijByNummer, createPartij, deleteAllMutaties } from '@/lib/db-supabase';
+import { createMutatie, getMutaties, getPartijByNummer, createPartij, deleteAllMutaties } from '@/lib/db-provider';
 
 export async function GET() {
   try {
@@ -22,14 +22,37 @@ export async function POST(request: NextRequest) {
     if (!partij_nummer || !datum) {
       return NextResponse.json({ error: 'Partij nummer en datum zijn verplicht' }, { status: 400 });
     }
-    
-    // Zoek of maak partij
-    let partij = await getPartijByNummer(partij_nummer);
-    if (!partij) {
-      // Maak nieuwe partij aan als deze niet bestaat
-      const type = partij_type || 'klant';
-      const partijId = await createPartij(partij_nummer, '', type);
-      partij = await getPartijByNummer(partij_nummer);
+
+    const nummer = String(partij_nummer).trim().toUpperCase();
+    const type = (partij_type || 'klant') as 'klant' | 'leverancier';
+
+    if (type === 'klant' && !/^\d+$/.test(nummer)) {
+      return NextResponse.json(
+        { error: 'Klantnummer mag alleen cijfers bevatten' },
+        { status: 400 }
+      );
+    }
+
+    let partij = await getPartijByNummer(nummer);
+
+    if (type === 'leverancier') {
+      // Kweker moet al bestaan en type leverancier hebben
+      if (!partij) {
+        return NextResponse.json(
+          { error: `Onbekende kweker: ${nummer}` },
+          { status: 400 }
+        );
+      }
+      if (partij.type !== 'leverancier') {
+        return NextResponse.json(
+          { error: `Nummer ${nummer} bestaat als klant, niet als kweker` },
+          { status: 400 }
+        );
+      }
+    } else if (!partij) {
+      // Klant mag nieuw worden aangemaakt
+      await createPartij(nummer, '', 'klant');
+      partij = await getPartijByNummer(nummer);
       if (!partij) {
         return NextResponse.json({ error: 'Fout bij aanmaken partij' }, { status: 400 });
       }

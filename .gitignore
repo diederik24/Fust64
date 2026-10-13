@@ -25,7 +25,9 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
-!.env*.local
+.env
+.env.local
+.env*.local
 
 # vercel
 .vercel
@@ -39,3 +41,6 @@ next-env.d.ts
 *.db-shm
 *.db-wal
 
+# Neon + data backups
+.neon
+/backups/

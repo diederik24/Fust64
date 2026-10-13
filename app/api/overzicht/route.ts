@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOverzicht } from '@/lib/db-supabase';
+import { getOverzicht } from '@/lib/db-provider';
 
 export async function GET() {
   console.log('GET /api/overzicht: Request received');

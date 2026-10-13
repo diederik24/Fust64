@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createMutatie, getPartijByNummer, createPartij } from '@/lib/db-supabase';
+import { createMutatie, getPartijByNummer, createPartij } from '@/lib/db-provider';
 
 interface CSVRow {
   partij_nummer: string;
@@ -157,12 +157,24 @@ export async function POST(request: NextRequest) {
       try {
         const csvRow = validation.data;
 
-        // Zoek of maak partij
-        let partij = await getPartijByNummer(csvRow.partij_nummer);
-        if (!partij) {
-          // Maak nieuwe partij aan
-          await createPartij(csvRow.partij_nummer, '', csvRow.partij_type);
-          partij = await getPartijByNummer(csvRow.partij_nummer);
+        const nummer = csvRow.partij_nummer.trim().toUpperCase();
+        let partij = await getPartijByNummer(nummer);
+
+        if (csvRow.partij_type === 'leverancier') {
+          if (!partij) {
+            errors.push({ row: rowNumber, error: `Onbekende kweker: ${nummer}` });
+            continue;
+          }
+          if (partij.type !== 'leverancier') {
+            errors.push({
+              row: rowNumber,
+              error: `Nummer ${nummer} bestaat als klant, niet als kweker`,
+            });
+            continue;
+          }
+        } else if (!partij) {
+          await createPartij(nummer, '', 'klant');
+          partij = await getPartijByNummer(nummer);
           if (!partij) {
             errors.push({ row: rowNumber, error: 'Fout bij aanmaken partij' });
             continue;

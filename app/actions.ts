@@ -1,6 +1,6 @@
 'use server';
 
-import { getOverzicht as getOverzichtDb, getMutaties as getMutatiesDb } from '@/lib/db-supabase';
+import { getOverzicht as getOverzichtDb, getMutaties as getMutatiesDb } from '@/lib/db-provider';
 
 export async function getOverzicht() {
   return await getOverzichtDb();
