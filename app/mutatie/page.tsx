@@ -329,14 +329,17 @@ export default function MutatiePage() {
                         }
                         return;
                       }
-                      setPartijNummer(raw);
+                      // Kweker: alleen A-Z en 0-9
+                      setPartijNummer(raw.replace(/[^A-Z0-9]/g, ''));
                     }}
                     onPaste={(e) => {
-                      if (partijType !== 'klant') return;
-                      const pasted = e.clipboardData.getData('text');
-                      if (!/^\d+$/.test(pasted.trim())) {
-                        e.preventDefault();
+                      e.preventDefault();
+                      const pasted = e.clipboardData.getData('text').toUpperCase();
+                      if (partijType === 'klant') {
+                        setPartijNummer(pasted.replace(/\D/g, ''));
+                        return;
                       }
+                      setPartijNummer(pasted.replace(/[^A-Z0-9]/g, ''));
                     }}
                     onKeyDown={(e) => {
                       const key = e.key.toLowerCase();
@@ -346,26 +349,31 @@ export default function MutatiePage() {
                         setSearchQuery('');
                         return;
                       }
+                      const allowedControl = [
+                        'backspace',
+                        'delete',
+                        'tab',
+                        'escape',
+                        'enter',
+                        'arrowleft',
+                        'arrowright',
+                        'arrowup',
+                        'arrowdown',
+                        'home',
+                        'end',
+                      ];
+                      if (allowedControl.includes(key) || e.ctrlKey || e.metaKey || e.altKey) {
+                        return;
+                      }
                       if (partijType === 'klant') {
-                        const allowedControl = [
-                          'backspace',
-                          'delete',
-                          'tab',
-                          'escape',
-                          'enter',
-                          'arrowleft',
-                          'arrowright',
-                          'arrowup',
-                          'arrowdown',
-                          'home',
-                          'end',
-                        ];
-                        if (allowedControl.includes(key) || e.ctrlKey || e.metaKey || e.altKey) {
-                          return;
-                        }
                         if (!/^\d$/.test(e.key)) {
                           e.preventDefault();
                         }
+                        return;
+                      }
+                      // Kweker: geen . , spatie of andere tekens
+                      if (!/^[a-z0-9]$/i.test(e.key)) {
+                        e.preventDefault();
                       }
                     }}
                     onFocus={() => {
