@@ -71,6 +71,7 @@ export async function createPartij(
       `INSERT INTO partijen (nummer, naam, type) VALUES ($1, $2, $3::partij_type) RETURNING id`,
       [nummer, naam, type]
     );
+    if (!row) throw new Error('Fout bij aanmaken partij');
     return Number(row.id);
   } catch (err: any) {
     if (err?.code === '23505') throw new Error('Partij nummer bestaat al');
