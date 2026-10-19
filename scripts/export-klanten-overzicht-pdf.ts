@@ -5,9 +5,41 @@
  *   npx tsx scripts/export-klanten-overzicht-pdf.ts 83,84,92,125,634,920
  */
 import { resolve } from 'path';
+import { config } from 'dotenv';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getPartijByNummer, getMutatiesByPartijId } from '../lib/db-provider';
+import { Pool } from '@neondatabase/serverless';
+
+config({ path: resolve(process.cwd(), '.env') });
+
+type PartijRow = { id: number; nummer: string; naam: string | null; type: string };
+type MutatieRow = {
+  datum: string;
+  geladen_cactag6: number | null;
+  geladen_bleche: number | null;
+  gelost_cactag6: number | null;
+  gelost_bleche: number | null;
+};
+
+async function getPartijByNummer(pool: Pool, nummer: string): Promise<PartijRow | null> {
+  const r = await pool.query<PartijRow>(
+    `SELECT id, nummer, naam, type::text AS type
+     FROM partijen WHERE UPPER(nummer) = UPPER($1) LIMIT 1`,
+    [nummer.trim()]
+  );
+  return r.rows[0] ?? null;
+}
+
+async function getMutatiesByPartijId(pool: Pool, partijId: number): Promise<MutatieRow[]> {
+  const r = await pool.query<MutatieRow>(
+    `SELECT datum, geladen_cactag6, geladen_bleche, gelost_cactag6, gelost_bleche
+     FROM fust_mutaties
+     WHERE partij_id = $1
+     ORDER BY datum ASC, created_at ASC`,
+    [partijId]
+  );
+  return r.rows;
+}
 
 function toNlDate(d: Date): string {
   const dd = String(d.getDate()).padStart(2, '0');
@@ -29,6 +61,10 @@ async function main() {
     console.error('Gebruik: npx tsx scripts/export-klanten-overzicht-pdf.ts 83,84,92,125,634,920');
     process.exit(1);
   }
+
+  const connectionString = process.env.DATABASE_URL?.trim().replace(/^['"]|['"]$/g, '');
+  if (!connectionString) throw new Error('DATABASE_URL ontbreekt');
+  const pool = new Pool({ connectionString });
 
   const outPath = resolve(
     process.cwd(),
@@ -72,13 +108,13 @@ async function main() {
   const missing: string[] = [];
 
   for (const nummer of nummers) {
-    const partij = await getPartijByNummer(nummer);
+    const partij = await getPartijByNummer(pool, nummer);
     if (!partij) {
       missing.push(nummer);
       continue;
     }
 
-    const mutaties = await getMutatiesByPartijId(partij.id);
+    const mutaties = await getMutatiesByPartijId(pool, partij.id);
 
     let totaalC = 0;
     let totaalB = 0;
@@ -223,13 +259,14 @@ async function main() {
   }
 
   doc.save(outPath);
+  await pool.end();
   console.log('Geschreven:', outPath);
   console.log('Klanten:', nummers.join(', '), `(${nummers.length} pagina's verwacht)`);
   console.log('Pagina\'s in PDF:', pageCount);
   if (missing.length) console.warn('Niet gevonden:', missing.join(', '));
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
   console.error(e);
   process.exit(1);
 });

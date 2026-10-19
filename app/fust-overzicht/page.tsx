@@ -43,9 +43,22 @@ function buildOverzichtQuery(
   return qs ? `?${qs}` : '';
 }
 
+function parseKlantnummers(raw: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const part of raw.split(/[\s,;]+/)) {
+    const nummer = part.trim().toUpperCase();
+    if (!nummer || seen.has(nummer)) continue;
+    seen.add(nummer);
+    result.push(nummer);
+  }
+  return result;
+}
+
 function FustOverzichtPageContent() {
   const [overzicht, setOverzicht] = useState<FustOverzicht[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectieNummers, setSelectieNummers] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -306,6 +319,148 @@ function FustOverzichtPageContent() {
     } catch (error) {
       console.error('PDF download error:', error);
       alert('Fout bij downloaden van PDF');
+    }
+  }
+
+  function downloadSelectiePdf() {
+    try {
+      const nummers = parseKlantnummers(selectieNummers);
+      if (nummers.length === 0) {
+        alert('Plak eerst klantnummers (bijv. uit Excel, één per regel).');
+        return;
+      }
+
+      const byNummer = new Map(
+        overzicht
+          .filter((item) => item.type === 'klant')
+          .map((item) => [String(item.nummer).toUpperCase(), item])
+      );
+
+      const selected = nummers
+        .map((nummer) => byNummer.get(nummer))
+        .filter((item): item is FustOverzicht => !!item);
+
+      const missing = nummers.filter((nummer) => !byNummer.has(nummer));
+      if (selected.length === 0) {
+        alert('Geen van de geplakte klantnummers gevonden.');
+        return;
+      }
+
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(37, 99, 235);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      doc.setFontSize(24);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text('FustOverzicht', pageWidth / 2, 15, { align: 'center' });
+
+      const datum = new Date().toLocaleDateString('nl-NL', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+
+      doc.setFontSize(16);
+      doc.setTextColor(31, 41, 55);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Selectie klanten', 14, 40);
+
+      doc.setFontSize(10);
+      doc.setTextColor(107, 114, 128);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Datum: ${datum}`, 14, 47);
+      doc.setFontSize(9);
+      doc.text(`Totaal: ${selected.length} klant(en)`, 14, 53);
+
+      const tableData = selected.map((item) => [
+        String(item.nummer || ''),
+        String(item.naam || ''),
+        Number(item.cactag6_balans || 0),
+        Number(item.bleche_balans || 0),
+      ]);
+
+      autoTable(doc, {
+        head: [['Klant Nummer', 'Naam', 'CC-TAG6 Balans', 'Bleche Balans']],
+        body: tableData,
+        startY: 58,
+        styles: {
+          fontSize: 10,
+          cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+          overflow: 'linebreak',
+          cellWidth: 'wrap',
+        },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 11,
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251],
+        },
+        columnStyles: {
+          0: { cellWidth: 35, halign: 'left' },
+          1: { cellWidth: 80, halign: 'left' },
+          2: {
+            cellWidth: 45,
+            halign: 'right',
+            cellPadding: { top: 3, bottom: 3, left: 4, right: 8 },
+          },
+          3: {
+            cellWidth: 35,
+            halign: 'right',
+            cellPadding: { top: 3, bottom: 3, left: 4, right: 12 },
+          },
+        },
+        margin: { top: 42, left: 14, right: 14 },
+        didParseCell: function (data: any) {
+          if (data.row.index === 0 && (data.column.index === 2 || data.column.index === 3)) {
+            data.cell.styles.halign = 'right';
+            return;
+          }
+          if (data.column.index === 2 || data.column.index === 3) {
+            data.cell.styles.halign = 'right';
+            const value = parseFloat(String(data.cell.text[0] || 0));
+            if (value > 0) {
+              data.cell.styles.textColor = [5, 150, 105];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (value < 0) {
+              data.cell.styles.textColor = [220, 38, 38];
+              data.cell.styles.fontStyle = 'bold';
+            }
+            data.cell.styles.font = 'courier';
+          }
+        },
+      });
+
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      doc.line(14, pageHeight - 20, pageWidth - 14, pageHeight - 20);
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `© ${new Date().getFullYear()} Fust64 - Alle rechten voorbehouden`,
+        pageWidth / 2,
+        pageHeight - 12,
+        { align: 'center' }
+      );
+
+      const dateStamp = new Date().toISOString().split('T')[0];
+      doc.save(`tegoed-selectie-${dateStamp}.pdf`);
+
+      if (missing.length > 0) {
+        alert(
+          `PDF gedownload met ${selected.length} klant(en).\nNiet gevonden: ${missing.join(', ')}`
+        );
+      }
+    } catch (error) {
+      console.error('Selectie PDF error:', error);
+      alert('Fout bij downloaden van selectie-PDF');
     }
   }
 
@@ -585,8 +740,26 @@ function FustOverzichtPageContent() {
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-56 p-2" align="end">
+            <PopoverContent className="w-72 p-2" align="end">
               <div className="space-y-1">
+                <div className="px-2 py-1.5 text-sm font-semibold text-gray-700">Selectie klanten</div>
+                <div className="px-2 pb-2 space-y-2">
+                  <textarea
+                    value={selectieNummers}
+                    onChange={(e) => setSelectieNummers(e.target.value)}
+                    placeholder={"Plak klantnummers hier\n47\n74\n87\n..."}
+                    rows={5}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono resize-y min-h-[96px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    onClick={downloadSelectiePdf}
+                    className="w-full flex items-center justify-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-gray-100 transition-colors border border-gray-200"
+                  >
+                    <img src="/Icon pdf.png" alt="PDF" className="h-6 w-auto object-contain" />
+                    <span>PDF van selectie</span>
+                  </button>
+                </div>
+                <div className="border-t my-1"></div>
                 <div className="px-2 py-1.5 text-sm font-semibold text-gray-700">Totaal overzicht</div>
                 <button
                   onClick={downloadTotaalPdf}
