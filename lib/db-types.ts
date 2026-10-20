@@ -58,3 +58,12 @@ export interface FustOverzicht {
   bleche_gelost: number;
   bleche_balans: number;
 }
+
+export interface DashboardStats {
+  totaalPartijen: number;
+  totaalKlanten: number;
+  totaalLeveranciers: number;
+  totaalGeladen: number;
+  totaalGelost: number;
+  tegoedArnoStraver: number;
+}

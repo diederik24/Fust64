@@ -15,6 +15,7 @@ export type {
   Mutatie,
   Overzicht,
   FustOverzicht,
+  DashboardStats,
 } from './db-types';
 
 function resolveProvider(): 'neon' | 'supabase' {
@@ -47,6 +48,8 @@ export const updatePartij =
 export const createMutatie = impl.createMutatie;
 export const getMutaties = impl.getMutaties;
 export const getOverzicht = impl.getOverzicht;
+export const getDashboardStats = impl.getDashboardStats;
+export const getRecenteMutaties = impl.getRecenteMutaties;
 export const deleteAllMutaties = impl.deleteAllMutaties;
 export const deleteMutatie = impl.deleteMutatie;
 export const getFustOverzicht = impl.getFustOverzicht;

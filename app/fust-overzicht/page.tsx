@@ -826,8 +826,18 @@ function FustOverzichtPageContent() {
                       placeholder="Zoek op nummer of naam..."
                       value={searchQuery}
                       onChange={(e) => updateFilters({ q: e.target.value })}
-                      className="pl-10"
+                      className={`pl-10 ${searchQuery ? 'pr-10' : ''}`}
                     />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => updateFilters({ q: '' })}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700"
+                        aria-label="Zoekopdracht wissen"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
             </CardHeader>

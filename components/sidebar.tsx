@@ -80,7 +80,7 @@ export function Sidebar() {
           disabled={loggingOut}
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors w-full",
-            "text-blue-100 hover:bg-blue-500 hover:text-white",
+            "bg-white text-red-500 hover:bg-red-600 hover:text-white",
             loggingOut && "opacity-50 cursor-not-allowed"
           )}
         >

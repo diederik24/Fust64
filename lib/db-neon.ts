@@ -1,8 +1,8 @@
 import { query, queryOne } from './neon-db';
-import type { Partij, Mutatie, Overzicht, FustOverzicht, PartijType } from './db-types';
+import type { Partij, Mutatie, Overzicht, FustOverzicht, PartijType, DashboardStats } from './db-types';
 import { isPartijType } from './db-types';
 
-export type { Partij, Mutatie, Overzicht, FustOverzicht, PartijType };
+export type { Partij, Mutatie, Overzicht, FustOverzicht, PartijType, DashboardStats };
 
 function toIsoDate(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -154,6 +154,72 @@ export async function getMutaties(): Promise<Mutatie[]> {
      FROM fust_mutaties m
      LEFT JOIN partijen p ON p.id = m.partij_id
      ORDER BY m.created_at DESC, m.datum DESC`
+  );
+  return rows.map(mapMutatie);
+}
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const [partijenRow, mutatiesRow, tegoedRow] = await Promise.all([
+    queryOne(
+      `SELECT
+         COUNT(*)::int AS totaal_partijen,
+         COUNT(*) FILTER (WHERE type = 'klant')::int AS totaal_klanten,
+         COUNT(*) FILTER (
+           WHERE type = 'leverancier'
+             AND EXISTS (
+               SELECT 1 FROM fust_mutaties m WHERE m.partij_id = partijen.id
+             )
+         )::int AS totaal_leveranciers
+       FROM partijen`
+    ),
+    queryOne(
+      `SELECT
+         COALESCE(SUM(geladen), 0)::bigint AS totaal_geladen,
+         COALESCE(SUM(gelost), 0)::bigint AS totaal_gelost
+       FROM fust_mutaties`
+    ),
+    // Positieve saldi bij klanten (gelost - geladen) = tegoed Arno Straver
+    queryOne(
+      `WITH per_klant AS (
+         SELECT
+           p.id,
+           COALESCE(SUM(m.gelost_cactag6), 0) - COALESCE(SUM(m.geladen_cactag6), 0) AS c_balans,
+           COALESCE(SUM(m.gelost_bleche), 0) - COALESCE(SUM(m.geladen_bleche), 0) AS b_balans
+         FROM partijen p
+         LEFT JOIN fust_mutaties m ON m.partij_id = p.id
+         WHERE p.type = 'klant'
+         GROUP BY p.id
+       )
+       SELECT COALESCE(
+         SUM(GREATEST(c_balans, 0) + GREATEST(b_balans, 0)),
+         0
+       )::bigint AS tegoed_arno
+       FROM per_klant`
+    ),
+  ]);
+
+  return {
+    totaalPartijen: Number(partijenRow?.totaal_partijen || 0),
+    totaalKlanten: Number(partijenRow?.totaal_klanten || 0),
+    totaalLeveranciers: Number(partijenRow?.totaal_leveranciers || 0),
+    totaalGeladen: Number(mutatiesRow?.totaal_geladen || 0),
+    totaalGelost: Number(mutatiesRow?.totaal_gelost || 0),
+    tegoedArnoStraver: Number(tegoedRow?.tegoed_arno || 0),
+  };
+}
+
+export async function getRecenteMutaties(limit = 5): Promise<Mutatie[]> {
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  const rows = await query(
+    `SELECT m.*,
+            p.nummer AS partij_nummer,
+            p.naam AS partij_naam,
+            p.type AS partij_type
+     FROM fust_mutaties m
+     LEFT JOIN partijen p ON p.id = m.partij_id
+     ORDER BY m.created_at DESC, m.datum DESC
+     LIMIT $1`,
+    [safeLimit]
   );
   return rows.map(mapMutatie);
 }

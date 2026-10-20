@@ -193,6 +193,99 @@ export async function getMutaties(): Promise<Mutatie[]> {
   });
 }
 
+export async function getDashboardStats(): Promise<{
+  totaalPartijen: number;
+  totaalKlanten: number;
+  totaalLeveranciers: number;
+  totaalGeladen: number;
+  totaalGelost: number;
+  tegoedArnoStraver: number;
+}> {
+  const [
+    { count: totaalPartijen, error: partijenError },
+    { count: totaalKlanten, error: klantenError },
+    { count: totaalLeveranciers, error: leveranciersError },
+    { data: geladenData, error: geladenError },
+    { data: gelostData, error: gelostError },
+    fustOverzicht,
+  ] = await Promise.all([
+    supabase.from('partijen').select('*', { count: 'exact', head: true }),
+    supabase.from('partijen').select('*', { count: 'exact', head: true }).eq('type', 'klant'),
+    // Alleen leveranciers die minstens één mutatie hebben
+    supabase
+      .from('partijen')
+      .select('id, fust_mutaties!inner(partij_id)', { count: 'exact', head: true })
+      .eq('type', 'leverancier'),
+    supabase.from('fust_mutaties').select('geladen.sum()'),
+    supabase.from('fust_mutaties').select('gelost.sum()'),
+    getFustOverzicht(),
+  ]);
+
+  if (partijenError) throw partijenError;
+  if (klantenError) throw klantenError;
+  if (leveranciersError) throw leveranciersError;
+  if (geladenError) throw geladenError;
+  if (gelostError) throw gelostError;
+
+  const readSum = (data: unknown): number => {
+    const row = Array.isArray(data) ? data[0] : null;
+    if (!row || typeof row !== 'object') return 0;
+    const value = (row as { sum?: unknown }).sum;
+    return Number(value || 0);
+  };
+
+  const tegoedArnoStraver = fustOverzicht
+    .filter((item) => item.type === 'klant')
+    .reduce((sum, item) => {
+      return (
+        sum +
+        Math.max(0, Number(item.cactag6_balans || 0)) +
+        Math.max(0, Number(item.bleche_balans || 0))
+      );
+    }, 0);
+
+  return {
+    totaalPartijen: Number(totaalPartijen || 0),
+    totaalKlanten: Number(totaalKlanten || 0),
+    totaalLeveranciers: Number(totaalLeveranciers || 0),
+    totaalGeladen: readSum(geladenData),
+    totaalGelost: readSum(gelostData),
+    tegoedArnoStraver,
+  };
+}
+
+export async function getRecenteMutaties(limit = 5): Promise<Mutatie[]> {
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+  const { data: mutaties, error: mutatiesError } = await supabase
+    .from('fust_mutaties')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .order('datum', { ascending: false })
+    .limit(safeLimit);
+
+  if (mutatiesError) throw mutatiesError;
+  if (!mutaties || mutaties.length === 0) return [];
+
+  const partijIds = [...new Set(mutaties.map((m: any) => m.partij_id))];
+  const { data: partijen, error: partijenError } = await supabase
+    .from('partijen')
+    .select('id, nummer, naam, type')
+    .in('id', partijIds);
+
+  if (partijenError) throw partijenError;
+
+  const partijenMap = new Map(partijen?.map((p: any) => [p.id, p]) || []);
+  return mutaties.map((mutatie: any) => {
+    const partij = partijenMap.get(mutatie.partij_id);
+    return {
+      ...mutatie,
+      partij_nummer: partij?.nummer,
+      partij_naam: partij?.naam,
+      partij_type: partij?.type,
+    };
+  });
+}
+
 export async function getOverzicht(): Promise<Overzicht[]> {
   console.log('getOverzicht: Starting...');
   
